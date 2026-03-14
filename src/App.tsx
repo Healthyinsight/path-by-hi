@@ -11,6 +11,7 @@ import Nutrition from "./pages/Nutrition";
 import Progress from "./pages/Progress";
 import SettingsPage from "./pages/SettingsPage";
 import Login from "./pages/Login";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
