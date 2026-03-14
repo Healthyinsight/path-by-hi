@@ -1,17 +1,25 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Calendar, Apple, TrendingUp, Settings } from 'lucide-react';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
-const tabs = [
-  { path: '/', label: 'Hem', icon: Home },
-  { path: '/schedule', label: 'Schema', icon: Calendar },
-  { path: '/nutrition', label: 'Kost', icon: Apple },
-  { path: '/progress', label: 'Progress', icon: TrendingUp },
-  { path: '/settings', label: 'Inställningar', icon: Settings },
+const allTabs = [
+  { path: '/', label: 'Hem', icon: Home, always: true },
+  { path: '/schedule', label: 'Schema', icon: Calendar, always: true },
+  { path: '/nutrition', label: 'Kost', icon: Apple, key: 'nutrition' },
+  { path: '/progress', label: 'Progress', icon: TrendingUp, always: true },
+  { path: '/settings', label: 'Inställningar', icon: Settings, always: true },
 ];
 
 export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile } = useUserProfile();
+
+  const tabs = allTabs.filter(tab => {
+    if (tab.always) return true;
+    if (tab.key === 'nutrition') return profile?.show_nutrition !== false;
+    return true;
+  });
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-muted/80 backdrop-blur-md">

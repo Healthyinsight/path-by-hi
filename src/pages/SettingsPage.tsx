@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LogOut, Watch, Check, Loader2, Mail, Target } from 'lucide-react';
+import { LogOut, Watch, Check, Loader2, Mail, Target, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import type { UserProfile } from '@/types/database';
 
@@ -13,6 +15,8 @@ const PHASES = ['base', 'build', 'peak', 'taper'];
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { profile: userProfile, refetch: refetchProfile } = useUserProfile();
   const [profile, setProfile] = useState<Partial<UserProfile>>({});
   const [goal, setGoal] = useState<{ goal_name: string; goal_date: string; goal_emoji: string }>({
     goal_name: '', goal_date: '', goal_emoji: '🏁',
@@ -53,6 +57,17 @@ export default function SettingsPage() {
     setSaving(false);
   };
 
+  const retakeQuiz = async () => {
+    if (!user) return;
+    await (supabase as any).from('user_profiles').update({ onboarding_completed: false }).eq('user_id', user.id);
+    navigate('/onboarding', { replace: true });
+  };
+
+  const archLabels: Record<string, string> = {
+    triathlon: 'Triathlon', running: 'Löpning', strength: 'Styrka',
+    weight_loss: 'Viktnedgång', wellness: 'Hälsa', custom: 'Eget mål',
+  };
+
   return (
     <div className="app-container pt-6">
       <h1 className="mb-6 text-xl tracking-tight">Inställningar</h1>
@@ -69,9 +84,26 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Onboarding profile summary */}
+        {userProfile && (
+          <div className="card-athletic space-y-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Min profil</p>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">Namn</span><span className="font-medium">{userProfile.display_name || '–'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Typ</span><span className="font-medium">{archLabels[userProfile.archetype] || userProfile.archetype}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Mål</span><span className="font-medium">{userProfile.goal_name || '–'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Nivå</span><span className="font-medium capitalize">{userProfile.level || '–'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Träningsdagar</span><span className="font-medium">{userProfile.training_days_per_week}/vecka</span></div>
+            </div>
+            <Button variant="outline" size="sm" className="w-full gap-2" onClick={retakeQuiz}>
+              <RefreshCw className="h-3.5 w-3.5" /> Kör quizen igen
+            </Button>
+          </div>
+        )}
+
         {/* Profile */}
         <div className="card-athletic space-y-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Profil</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Träningsdata</p>
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Namn</Label>

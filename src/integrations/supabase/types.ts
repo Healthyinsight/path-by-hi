@@ -314,6 +314,81 @@ export type Database = {
         }
         Relationships: []
       }
+      user_profiles: {
+        Row: {
+          archetype: string
+          body_fat_pct: number | null
+          created_at: string | null
+          disciplines: string[] | null
+          display_name: string | null
+          equipment: string | null
+          goal_date: string | null
+          goal_emoji: string | null
+          goal_name: string | null
+          has_injuries: string | null
+          id: string
+          level: string | null
+          onboarding_completed: boolean | null
+          show_nutrition: boolean | null
+          show_race_countdown: boolean | null
+          show_recomp: boolean | null
+          target_weight: number | null
+          training_days_per_week: number | null
+          updated_at: string | null
+          user_id: string
+          weight: number | null
+          wellness_focuses: string[] | null
+        }
+        Insert: {
+          archetype?: string
+          body_fat_pct?: number | null
+          created_at?: string | null
+          disciplines?: string[] | null
+          display_name?: string | null
+          equipment?: string | null
+          goal_date?: string | null
+          goal_emoji?: string | null
+          goal_name?: string | null
+          has_injuries?: string | null
+          id?: string
+          level?: string | null
+          onboarding_completed?: boolean | null
+          show_nutrition?: boolean | null
+          show_race_countdown?: boolean | null
+          show_recomp?: boolean | null
+          target_weight?: number | null
+          training_days_per_week?: number | null
+          updated_at?: string | null
+          user_id: string
+          weight?: number | null
+          wellness_focuses?: string[] | null
+        }
+        Update: {
+          archetype?: string
+          body_fat_pct?: number | null
+          created_at?: string | null
+          disciplines?: string[] | null
+          display_name?: string | null
+          equipment?: string | null
+          goal_date?: string | null
+          goal_emoji?: string | null
+          goal_name?: string | null
+          has_injuries?: string | null
+          id?: string
+          level?: string | null
+          onboarding_completed?: boolean | null
+          show_nutrition?: boolean | null
+          show_race_countdown?: boolean | null
+          show_recomp?: boolean | null
+          target_weight?: number | null
+          training_days_per_week?: number | null
+          updated_at?: string | null
+          user_id?: string
+          weight?: number | null
+          wellness_focuses?: string[] | null
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           body_fat_pct: number | null

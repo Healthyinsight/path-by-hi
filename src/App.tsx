@@ -11,6 +11,7 @@ import Nutrition from "./pages/Nutrition";
 import Progress from "./pages/Progress";
 import SettingsPage from "./pages/SettingsPage";
 import Login from "./pages/Login";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
             <Route path="/nutrition" element={<ProtectedRoute><Nutrition /></ProtectedRoute>} />

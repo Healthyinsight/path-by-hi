@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { MacroRing } from '@/components/MacroRing';
 import { BottomNav } from '@/components/BottomNav';
 import { AppHeader } from '@/components/AppHeader';
@@ -67,6 +68,7 @@ const DISTANCE_ESTIMATES: Record<string, { value: number; unit: string; sport: s
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { profile: userProfile } = useUserProfile();
   const [profile, setProfile] = useState<any>(null);
   const [goal, setGoal] = useState<any>(null);
   const [todaySchedule, setTodaySchedule] = useState<any>(null);
@@ -78,6 +80,11 @@ export default function Dashboard() {
   const [weekNutrition, setWeekNutrition] = useState<any[]>([]);
   const [allNutrition, setAllNutrition] = useState<any[]>([]);
   const [zonesOpen, setZonesOpen] = useState(false);
+
+  // Profile-based visibility
+  const showRaceCountdown = userProfile?.show_race_countdown !== false;
+  const showNutrition = userProfile?.show_nutrition !== false;
+  const showRecomp = userProfile?.show_recomp === true;
 
   useEffect(() => {
     if (!user) return;
@@ -100,12 +107,13 @@ export default function Dashboard() {
     ]).then(([profileRes, goalRes, scheduleRes, weekRes, allSchedRes, metricsRes, bodyMetRes, nutritionRes, weekNutRes, allNutRes]) => {
       if (profileRes.data) setProfile(profileRes.data);
       if (goalRes.data) setGoal(goalRes.data);
-      else {
-        // Auto-seed default goal
-        supabase.from('user_goals').insert({
-          user_id: user.id, goal_name: 'Ironman 70.3 Jönköping',
-          goal_date: '2026-07-05', goal_emoji: '🏁', disciplines: ['swim', 'bike', 'run'],
-        }).select().single().then(({ data }) => { if (data) setGoal(data); });
+      else if (userProfile?.goal_name) {
+        // Use onboarding goal data
+        setGoal({
+          goal_name: userProfile.goal_name,
+          goal_date: userProfile.goal_date,
+          goal_emoji: userProfile.goal_emoji || '✨',
+        });
       }
       if (scheduleRes.data) setTodaySchedule(scheduleRes.data);
       if (weekRes.data) setWeekSchedule(weekRes.data);
@@ -116,9 +124,9 @@ export default function Dashboard() {
       if (weekNutRes.data) setWeekNutrition(weekNutRes.data);
       if (allNutRes.data) setAllNutrition(allNutRes.data);
     });
-  }, [user]);
+  }, [user, userProfile]);
 
-  const userName = profile?.name || user?.user_metadata?.name || 'Athlete';
+  const userName = userProfile?.display_name || profile?.name || user?.user_metadata?.name || 'Athlete';
   const weekDates = getWeekDates();
   const completedCount = weekSchedule.filter((s) => s.completed).length;
   const totalPlanned = weekSchedule.length;
@@ -189,33 +197,35 @@ export default function Dashboard() {
     return { day: DAY_LABELS[i], consumed: entry?.actual_kcal || 0, target: entry?.target_kcal || 0 };
   });
 
-  const currentWeight = latestMetrics?.weight || profile?.current_weight || 82;
+  const currentWeight = latestMetrics?.weight || userProfile?.weight || profile?.current_weight || 82;
   const weekDeficit = weekNutrition.reduce((sum, n) => sum + ((n.actual_kcal || 0) - (n.target_kcal || 0)), 0);
 
   return (
     <div className="app-container pt-2">
       <AppHeader />
 
-      {/* 1. Mountain Journey Timeline */}
-      {goal ? (
-        <MountainTimeline
-          goalName={goal.goal_name}
-          goalEmoji={goal.goal_emoji || '🏁'}
-          goalDate={goal.goal_date}
-          completedWorkouts={totalCompleted}
-          totalWorkouts={allSchedule.length}
-          rotatingStat={rotatingStat}
-        />
-      ) : (
-        <div className="card-athletic mb-4 flex flex-col items-center gap-2 py-6">
-          <span className="text-2xl">🏔️</span>
-          <p className="text-sm text-muted-foreground">Sätt ditt mål i inställningarna</p>
-          <Button variant="outline" size="sm" onClick={() => navigate('/settings')}>Sätt ditt mål</Button>
-        </div>
+      {/* 1. Mountain Journey Timeline - only if show_race_countdown */}
+      {showRaceCountdown && (
+        goal ? (
+          <MountainTimeline
+            goalName={goal.goal_name}
+            goalEmoji={goal.goal_emoji || '🏁'}
+            goalDate={goal.goal_date}
+            completedWorkouts={totalCompleted}
+            totalWorkouts={allSchedule.length}
+            rotatingStat={rotatingStat}
+          />
+        ) : (
+          <div className="card-athletic mb-4 flex flex-col items-center gap-2 py-6">
+            <span className="text-2xl">🏔️</span>
+            <p className="text-sm text-muted-foreground">Sätt ditt mål i inställningarna</p>
+            <Button variant="outline" size="sm" onClick={() => navigate('/settings')}>Sätt ditt mål</Button>
+          </div>
+        )
       )}
 
-      {/* 2. Race Readiness Score */}
-      <RaceReadinessGauge breakdown={readiness} hasEnoughData={hasEnoughData} />
+      {/* 2. Race Readiness Score - only if show_race_countdown */}
+      {showRaceCountdown && <RaceReadinessGauge breakdown={readiness} hasEnoughData={hasEnoughData} />}
 
       {/* 3. Smart Coaching Message */}
       <CoachingCard emoji={coaching.emoji} message={coaching.message} />
@@ -251,25 +261,27 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* 5. Nutrition summary */}
-      <div className="card-athletic mb-4 cursor-pointer transition-all duration-200 hover:shadow-md" onClick={() => navigate('/nutrition')}>
-        <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Dagens näring</p>
-        {todayNutrition ? (
-          <div className="flex items-center justify-around">
-            <MacroRing label="Kcal" current={todayNutrition.actual_kcal} target={todayNutrition.target_kcal} unit="" color="hsl(var(--primary))" size={64} />
-            <MacroRing label="Protein" current={todayNutrition.actual_protein} target={todayNutrition.target_protein} unit="g" color="hsl(var(--nutrition-protein))" size={64} />
-            <MacroRing label="Carbs" current={todayNutrition.actual_carbs} target={todayNutrition.target_carbs} unit="g" color="hsl(var(--nutrition-carbs))" size={64} />
-            <MacroRing label="Fett" current={todayNutrition.actual_fat} target={todayNutrition.target_fat} unit="g" color="hsl(var(--nutrition-fat))" size={64} />
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Plus className="h-4 w-4" /><span>Ingen måltid loggad än</span>
-          </div>
-        )}
-      </div>
+      {/* 5. Nutrition summary - only if show_nutrition */}
+      {showNutrition && (
+        <div className="card-athletic mb-4 cursor-pointer transition-all duration-200 hover:shadow-md" onClick={() => navigate('/nutrition')}>
+          <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Dagens näring</p>
+          {todayNutrition ? (
+            <div className="flex items-center justify-around">
+              <MacroRing label="Kcal" current={todayNutrition.actual_kcal} target={todayNutrition.target_kcal} unit="" color="hsl(var(--primary))" size={64} />
+              <MacroRing label="Protein" current={todayNutrition.actual_protein} target={todayNutrition.target_protein} unit="g" color="hsl(var(--nutrition-protein))" size={64} />
+              <MacroRing label="Carbs" current={todayNutrition.actual_carbs} target={todayNutrition.target_carbs} unit="g" color="hsl(var(--nutrition-carbs))" size={64} />
+              <MacroRing label="Fett" current={todayNutrition.actual_fat} target={todayNutrition.target_fat} unit="g" color="hsl(var(--nutrition-fat))" size={64} />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Plus className="h-4 w-4" /><span>Ingen måltid loggad än</span>
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* 6. Weekly nutrition chart */}
-      {weekNutrition.length > 0 && (
+      {/* 6. Weekly nutrition chart - only if show_nutrition */}
+      {showNutrition && weekNutrition.length > 0 && (
         <div className="card-athletic mb-4">
           <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Veckans kalorier</p>
           <ResponsiveContainer width="100%" height={120}>
@@ -329,22 +341,26 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 7. Recomp progress */}
-      <div className="card-athletic mb-4">
-        <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Recomp-mål</p>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{currentWeight} kg</p>
-            <p className="text-xs text-muted-foreground">Mål: 78–80 kg @ 15% bf</p>
-          </div>
-          <div className="text-right">
-            <p className="font-data text-sm font-bold text-muted-foreground" style={{ fontFeatureSettings: "'tnum' 1" }}>
-              {weekDeficit > 0 ? '+' : ''}{weekDeficit} kcal
-            </p>
-            <p className="text-[10px] text-muted-foreground">veckobalans</p>
+      {/* 7. Recomp progress - only if show_recomp */}
+      {showRecomp && (
+        <div className="card-athletic mb-4">
+          <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Recomp-mål</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{currentWeight} kg</p>
+              <p className="text-xs text-muted-foreground">
+                Mål: {userProfile?.target_weight ? `${userProfile.target_weight} kg` : '78–80 kg @ 15% bf'}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="font-data text-sm font-bold text-muted-foreground" style={{ fontFeatureSettings: "'tnum' 1" }}>
+                {weekDeficit > 0 ? '+' : ''}{weekDeficit} kcal
+              </p>
+              <p className="text-[10px] text-muted-foreground">veckobalans</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Training zones */}
       <Collapsible open={zonesOpen} onOpenChange={setZonesOpen}>
