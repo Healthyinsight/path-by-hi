@@ -314,17 +314,17 @@ export default function Dashboard() {
       <div className="mb-4 grid grid-cols-3 gap-3">
         <div className="card-athletic flex flex-col items-center">
           <Battery className="mb-1 h-4 w-4 text-rest" />
-          <span className="font-mono text-lg font-bold">{latestMetrics?.body_battery ?? '–'}</span>
+          <span className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{latestMetrics?.body_battery ?? '–'}</span>
           <span className="text-[10px] text-muted-foreground">Body Battery</span>
         </div>
         <div className="card-athletic flex flex-col items-center">
           <Moon className="mb-1 h-4 w-4 text-swim" />
-          <span className="font-mono text-lg font-bold">{latestMetrics?.sleep_hours ?? '–'}</span>
+          <span className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{latestMetrics?.sleep_hours ?? '–'}</span>
           <span className="text-[10px] text-muted-foreground">Sömn (h)</span>
         </div>
         <div className="card-athletic flex flex-col items-center">
           <Heart className="mb-1 h-4 w-4 text-destructive" />
-          <span className="font-mono text-lg font-bold">{latestMetrics?.hrv_rmssd ?? '–'}</span>
+          <span className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{latestMetrics?.hrv_rmssd ?? '–'}</span>
           <span className="text-[10px] text-muted-foreground">HRV</span>
         </div>
       </div>
