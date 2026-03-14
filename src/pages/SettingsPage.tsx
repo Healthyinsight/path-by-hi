@@ -128,11 +128,28 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* Race */}
-        <div className="card-athletic">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Tävling</p>
-          <p className="mt-1 text-sm font-medium">Ironman 70.3 Jönköping</p>
-          <p className="text-sm text-muted-foreground">5 juli 2026</p>
+        {/* Mitt mål */}
+        <div className="card-athletic space-y-3">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-primary" />
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Mitt mål</p>
+          </div>
+          <div className="space-y-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Målnamn</Label>
+              <Input value={goal.goal_name} onChange={(e) => setGoal(g => ({ ...g, goal_name: e.target.value }))} placeholder="t.ex. Ironman 70.3" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Måldatum</Label>
+                <Input type="date" value={goal.goal_date} onChange={(e) => setGoal(g => ({ ...g, goal_date: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Emoji</Label>
+                <Input value={goal.goal_emoji} onChange={(e) => setGoal(g => ({ ...g, goal_emoji: e.target.value }))} placeholder="🏁" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <Button onClick={save} className="w-full touch-target" disabled={saving}>
