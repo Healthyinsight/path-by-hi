@@ -12,7 +12,7 @@ const WORDS = [
   { word: "The",      emoji: "✨", color: "#5095AC" },
 ];
 
-const TIMINGS = [800, 800, 800, 1000, 1000, 1200, 1500];
+const TIMINGS = [1500, 1500, 1500, 1500, 1800, 2000, 2500];
 const RESTART_DELAY = 30_000;
 
 interface AnimatedTitleProps {
