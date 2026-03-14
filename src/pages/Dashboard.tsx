@@ -5,19 +5,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { MacroRing } from '@/components/MacroRing';
 import { BottomNav } from '@/components/BottomNav';
 import {
-  Battery,
-  Moon,
-  Heart,
-  Target,
-  Dumbbell,
-  Bike,
-  Waves,
-  Check,
-  ChevronDown,
-  ChevronUp,
+  Battery, Moon, Heart, Target, Dumbbell, Bike, Waves, Check,
+  ChevronDown, ChevronUp, Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell,
+} from 'recharts';
 
 const RACE_DATE = new Date('2026-07-05');
 
@@ -29,8 +24,7 @@ function getGreeting() {
 }
 
 function getDaysUntilRace() {
-  const now = new Date();
-  return Math.ceil((RACE_DATE.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.ceil((RACE_DATE.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
 const sportIcons: Record<string, React.ReactNode> = {
@@ -40,22 +34,11 @@ const sportIcons: Record<string, React.ReactNode> = {
   strength: <Dumbbell className="h-5 w-5" />,
 };
 
-const sportLabels: Record<string, string> = {
-  bike: 'Cykling',
-  run: 'Löpning',
-  swim: 'Simning',
-  strength: 'Styrka',
-};
-
+const sportLabels: Record<string, string> = { bike: 'Cykling', run: 'Löpning', swim: 'Simning', strength: 'Styrka' };
 const subtypeLabels: Record<string, string> = {
-  long_distance: 'Långdistans',
-  vo2max: 'VO2max',
-  upper: 'Överkropp',
-  lower: 'Underkropp',
-  long_swim: 'Långsim',
-  technique_intervals: 'Teknik & Intervaller',
+  long_distance: 'Långdistans', vo2max: 'VO2max', upper: 'Överkropp', lower: 'Underkropp',
+  long_swim: 'Långsim', technique_intervals: 'Teknik & Intervaller',
 };
-
 const typeColors: Record<string, string> = {
   cardio: 'bg-cardio/20 text-cardio border-cardio/30',
   strength: 'bg-strength/20 text-strength border-strength/30',
@@ -79,6 +62,8 @@ function fmtDate(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
+const DAY_LABELS = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön'];
+
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -87,6 +72,7 @@ export default function Dashboard() {
   const [weekSchedule, setWeekSchedule] = useState<any[]>([]);
   const [latestMetrics, setLatestMetrics] = useState<any>(null);
   const [todayNutrition, setTodayNutrition] = useState<any>(null);
+  const [weekNutrition, setWeekNutrition] = useState<any[]>([]);
   const [zonesOpen, setZonesOpen] = useState(false);
 
   useEffect(() => {
@@ -102,12 +88,14 @@ export default function Dashboard() {
       supabase.from('training_schedule').select('*').eq('user_id', user.id).gte('date', weekStart).lte('date', weekEnd).order('date'),
       supabase.from('body_metrics').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(1).single(),
       supabase.from('nutrition_plan').select('*').eq('user_id', user.id).eq('date', today).single(),
-    ]).then(([profileRes, scheduleRes, weekRes, metricsRes, nutritionRes]) => {
+      supabase.from('nutrition_plan').select('*').eq('user_id', user.id).gte('date', weekStart).lte('date', weekEnd).order('date'),
+    ]).then(([profileRes, scheduleRes, weekRes, metricsRes, nutritionRes, weekNutRes]) => {
       if (profileRes.data) setProfile(profileRes.data);
       if (scheduleRes.data) setTodaySchedule(scheduleRes.data);
       if (weekRes.data) setWeekSchedule(weekRes.data);
       if (metricsRes.data) setLatestMetrics(metricsRes.data);
       if (nutritionRes.data) setTodayNutrition(nutritionRes.data);
+      if (weekNutRes.data) setWeekNutrition(weekNutRes.data);
     });
   }, [user]);
 
@@ -117,21 +105,35 @@ export default function Dashboard() {
   const completedCount = weekSchedule.filter((s) => s.completed).length;
   const totalPlanned = weekSchedule.length;
 
+  // Weekly nutrition chart data
+  const chartData = weekDates.map((date, i) => {
+    const dateStr = fmtDate(date);
+    const entry = weekNutrition.find((n) => n.date === dateStr);
+    return {
+      day: DAY_LABELS[i],
+      consumed: entry?.actual_kcal || 0,
+      target: entry?.target_kcal || 0,
+    };
+  });
+
+  // Recomp
+  const currentWeight = latestMetrics?.weight || profile?.current_weight || 82;
+  const weekDeficit = weekNutrition.reduce((sum, n) => {
+    const diff = (n.actual_kcal || 0) - (n.target_kcal || 0);
+    return sum + diff;
+  }, 0);
+
   return (
     <div className="app-container pt-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">
-          {getGreeting()}, {userName}
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight">{getGreeting()}, {userName}</h1>
         <p className="text-sm text-muted-foreground">Låt oss krossa dagens träning</p>
       </div>
 
       {/* Race countdown */}
       <div className="card-athletic mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            Ironman 70.3 Jönköping
-          </p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Ironman 70.3 Jönköping</p>
           <p className="stat-number text-primary">{daysLeft}</p>
           <p className="text-xs text-muted-foreground">dagar kvar</p>
         </div>
@@ -146,37 +148,24 @@ export default function Dashboard() {
         {todaySchedule ? (
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-xl border ${
-                  typeColors[todaySchedule.planned_type] || 'bg-muted'
-                }`}
-              >
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${typeColors[todaySchedule.planned_type] || 'bg-muted'}`}>
                 {sportIcons[todaySchedule.planned_sport || ''] || <Target className="h-5 w-5" />}
               </div>
               <div className="flex-1">
                 <p className="font-semibold">
-                  {sportLabels[todaySchedule.planned_sport] || todaySchedule.planned_sport} –{' '}
-                  {subtypeLabels[todaySchedule.planned_subtype] || todaySchedule.planned_subtype}
+                  {sportLabels[todaySchedule.planned_sport] || todaySchedule.planned_sport} – {subtypeLabels[todaySchedule.planned_subtype] || todaySchedule.planned_subtype}
                 </p>
                 {todaySchedule.planned_details && (
-                  <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-                    {todaySchedule.planned_details}
-                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{todaySchedule.planned_details}</p>
                 )}
               </div>
             </div>
             {todaySchedule.completed ? (
               <div className="flex items-center gap-2 rounded-xl bg-rest/10 px-3 py-2 text-sm text-rest">
-                <Check className="h-4 w-4" />
-                Genomfört
+                <Check className="h-4 w-4" /> Genomfört
               </div>
             ) : (
-              <Button
-                className="w-full touch-target"
-                onClick={() => navigate('/schedule')}
-              >
-                Starta pass
-              </Button>
+              <Button className="w-full touch-target" onClick={() => navigate('/schedule')}>Starta pass</Button>
             )}
           </div>
         ) : (
@@ -194,28 +183,59 @@ export default function Dashboard() {
             const isToday = dateStr === fmtDate(new Date());
             return (
               <div key={dateStr} className="flex flex-col items-center gap-1">
-                <span className="text-[10px] text-muted-foreground">
-                  {['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön'][
-                    (date.getDay() + 6) % 7
-                  ]}
-                </span>
-                <div
-                  className={`h-4 w-4 rounded-full border-2 transition-all ${
-                    workout?.completed
-                      ? 'border-rest bg-rest'
-                      : workout
-                      ? `border-primary ${isToday ? 'bg-primary/30' : 'bg-transparent'}`
-                      : 'border-muted-foreground/30 bg-transparent'
-                  }`}
-                />
+                <span className="text-[10px] text-muted-foreground">{DAY_LABELS[(date.getDay() + 6) % 7]}</span>
+                <div className={`h-4 w-4 rounded-full border-2 transition-all ${
+                  workout?.completed ? 'border-rest bg-rest'
+                  : workout ? `border-primary ${isToday ? 'bg-primary/30' : 'bg-transparent'}`
+                  : 'border-muted-foreground/30 bg-transparent'
+                }`} />
               </div>
             );
           })}
         </div>
-        <p className="text-center text-xs text-muted-foreground">
-          {completedCount} av {totalPlanned} pass genomförda denna vecka
-        </p>
+        <p className="text-center text-xs text-muted-foreground">{completedCount} av {totalPlanned} pass genomförda denna vecka</p>
       </div>
+
+      {/* Nutrition summary */}
+      <div className="card-athletic mb-4 cursor-pointer" onClick={() => navigate('/nutrition')}>
+        <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Dagens näring</p>
+        {todayNutrition ? (
+          <div className="flex items-center justify-around">
+            <MacroRing label="Kcal" current={todayNutrition.actual_kcal} target={todayNutrition.target_kcal} unit="" color="hsl(var(--primary))" size={64} />
+            <MacroRing label="Protein" current={todayNutrition.actual_protein} target={todayNutrition.target_protein} unit="g" color="hsl(var(--nutrition-protein))" size={64} />
+            <MacroRing label="Carbs" current={todayNutrition.actual_carbs} target={todayNutrition.target_carbs} unit="g" color="hsl(var(--nutrition-carbs))" size={64} />
+            <MacroRing label="Fett" current={todayNutrition.actual_fat} target={todayNutrition.target_fat} unit="g" color="hsl(var(--nutrition-fat))" size={64} />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Plus className="h-4 w-4" />
+            <span>Ingen måltid loggad än</span>
+          </div>
+        )}
+      </div>
+
+      {/* Weekly nutrition chart */}
+      {weekNutrition.length > 0 && (
+        <div className="card-athletic mb-4">
+          <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Veckans kalorier</p>
+          <ResponsiveContainer width="100%" height={120}>
+            <BarChart data={chartData} barGap={2}>
+              <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'hsl(215 20.2% 65.1%)' }} axisLine={false} tickLine={false} />
+              <YAxis hide />
+              <Bar dataKey="target" radius={[4, 4, 0, 0]} barSize={16}>
+                {chartData.map((_, i) => (
+                  <Cell key={i} fill="hsl(217.2 32.6% 25%)" />
+                ))}
+              </Bar>
+              <Bar dataKey="consumed" radius={[4, 4, 0, 0]} barSize={16}>
+                {chartData.map((entry, i) => (
+                  <Cell key={i} fill={entry.consumed > 0 ? 'hsl(217 91% 60%)' : 'transparent'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Quick stats */}
       <div className="mb-4 grid grid-cols-3 gap-3">
@@ -236,19 +256,21 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Nutrition summary */}
+      {/* Recomp progress */}
       <div className="card-athletic mb-4">
-        <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Dagens näring</p>
-        {todayNutrition ? (
-          <div className="flex items-center justify-around">
-            <MacroRing label="Kcal" current={todayNutrition.actual_kcal} target={todayNutrition.target_kcal} unit="" color="hsl(var(--primary))" />
-            <MacroRing label="Protein" current={todayNutrition.actual_protein} target={todayNutrition.target_protein} unit="g" color="hsl(var(--strength))" />
-            <MacroRing label="Kolhydrat" current={todayNutrition.actual_carbs} target={todayNutrition.target_carbs} unit="g" color="hsl(var(--cardio))" />
-            <MacroRing label="Fett" current={todayNutrition.actual_fat} target={todayNutrition.target_fat} unit="g" color="hsl(var(--swim))" />
+        <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Recomp-mål</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-mono text-lg font-bold">{currentWeight} kg</p>
+            <p className="text-xs text-muted-foreground">Mål: 78–80 kg @ 15% bf</p>
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Ingen näringsplan för idag</p>
-        )}
+          <div className="text-right">
+            <p className="font-mono text-sm font-bold text-muted-foreground">
+              {weekDeficit > 0 ? '+' : ''}{weekDeficit} kcal
+            </p>
+            <p className="text-[10px] text-muted-foreground">veckobalans</p>
+          </div>
+        </div>
       </div>
 
       {/* Training zones */}
@@ -256,11 +278,7 @@ export default function Dashboard() {
         <div className="card-athletic mb-4">
           <CollapsibleTrigger className="flex w-full items-center justify-between">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Mina zoner</p>
-            {zonesOpen ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
+            {zonesOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-3 space-y-2">
             <div className="rounded-xl border border-border bg-background/50 p-3">
@@ -273,9 +291,7 @@ export default function Dashboard() {
             </div>
             <div className="rounded-xl border border-border bg-background/50 p-3">
               <p className="text-xs font-semibold text-muted-foreground">Tröskelvärden</p>
-              <p className="text-sm">
-                FTP: {profile?.ftp_watts || 230}W | Löptröskel: {profile?.run_threshold_pace || '4:30'}/km
-              </p>
+              <p className="text-sm">FTP: {profile?.ftp_watts || 230}W | Löptröskel: {profile?.run_threshold_pace || '4:30'}/km</p>
             </div>
           </CollapsibleContent>
         </div>
