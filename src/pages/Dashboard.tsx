@@ -314,17 +314,17 @@ export default function Dashboard() {
       <div className="mb-4 grid grid-cols-3 gap-3">
         <div className="card-athletic flex flex-col items-center">
           <Battery className="mb-1 h-4 w-4 text-rest" />
-          <span className="font-mono text-lg font-bold">{latestMetrics?.body_battery ?? '–'}</span>
+          <span className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{latestMetrics?.body_battery ?? '–'}</span>
           <span className="text-[10px] text-muted-foreground">Body Battery</span>
         </div>
         <div className="card-athletic flex flex-col items-center">
           <Moon className="mb-1 h-4 w-4 text-swim" />
-          <span className="font-mono text-lg font-bold">{latestMetrics?.sleep_hours ?? '–'}</span>
+          <span className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{latestMetrics?.sleep_hours ?? '–'}</span>
           <span className="text-[10px] text-muted-foreground">Sömn (h)</span>
         </div>
         <div className="card-athletic flex flex-col items-center">
           <Heart className="mb-1 h-4 w-4 text-destructive" />
-          <span className="font-mono text-lg font-bold">{latestMetrics?.hrv_rmssd ?? '–'}</span>
+          <span className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{latestMetrics?.hrv_rmssd ?? '–'}</span>
           <span className="text-[10px] text-muted-foreground">HRV</span>
         </div>
       </div>
@@ -334,11 +334,11 @@ export default function Dashboard() {
         <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Recomp-mål</p>
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-mono text-lg font-bold">{currentWeight} kg</p>
+            <p className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{currentWeight} kg</p>
             <p className="text-xs text-muted-foreground">Mål: 78–80 kg @ 15% bf</p>
           </div>
           <div className="text-right">
-            <p className="font-mono text-sm font-bold text-muted-foreground">
+            <p className="font-data text-sm font-bold text-muted-foreground" style={{ fontFeatureSettings: "'tnum' 1" }}>
               {weekDeficit > 0 ? '+' : ''}{weekDeficit} kcal
             </p>
             <p className="text-[10px] text-muted-foreground">veckobalans</p>

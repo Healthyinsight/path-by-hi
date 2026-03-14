@@ -37,7 +37,7 @@ export function RaceReadinessGauge({ breakdown, hasEnoughData }: Props) {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="font-mono text-2xl font-bold" style={{ color }}>
+            <span className="font-data text-2xl font-bold" style={{ color, fontFeatureSettings: "'tnum' 1" }}>
               {hasEnoughData ? `${total}%` : '–'}
             </span>
           </div>
@@ -57,7 +57,7 @@ export function RaceReadinessGauge({ breakdown, hasEnoughData }: Props) {
             <div key={s.label} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">{s.label}</span>
-                <span className="font-mono font-medium">{s.value}%</span>
+                <span className="font-data font-medium" style={{ fontFeatureSettings: "'tnum' 1" }}>{s.value}%</span>
               </div>
               <Progress value={s.value} className="h-1.5" />
             </div>

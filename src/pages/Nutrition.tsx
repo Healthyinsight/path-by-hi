@@ -186,7 +186,7 @@ export default function Nutrition() {
                 <Utensils className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">{meal.name}</p>
-                  <div className="flex gap-2 text-[10px] text-muted-foreground">
+                  <div className="flex gap-2 font-data text-[10px] text-muted-foreground" style={{ fontFeatureSettings: "'tnum' 1" }}>
                     <span>{meal.kcal} kcal</span><span>{meal.protein}p</span><span>{meal.carbs}c</span><span>{meal.fat}f</span>
                   </div>
                 </div>
@@ -203,10 +203,10 @@ export default function Nutrition() {
       <div className="card-athletic mb-4">
         <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Kvar att äta idag</p>
         <div className="grid grid-cols-4 gap-2 text-center">
-          <div><p className="font-mono text-lg font-bold">{remaining.kcal}</p><p className="text-[10px] text-muted-foreground">kcal</p></div>
-          <div><p className="font-mono text-lg font-bold text-nutrition-protein">{remaining.protein}</p><p className="text-[10px] text-muted-foreground">protein</p></div>
-          <div><p className="font-mono text-lg font-bold text-nutrition-carbs">{remaining.carbs}</p><p className="text-[10px] text-muted-foreground">carbs</p></div>
-          <div><p className="font-mono text-lg font-bold text-nutrition-fat">{remaining.fat}</p><p className="text-[10px] text-muted-foreground">fett</p></div>
+          <div><p className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{remaining.kcal}</p><p className="text-[10px] text-muted-foreground">kcal</p></div>
+          <div><p className="font-data text-lg font-bold text-nutrition-protein" style={{ fontFeatureSettings: "'tnum' 1" }}>{remaining.protein}</p><p className="text-[10px] text-muted-foreground">protein</p></div>
+          <div><p className="font-data text-lg font-bold text-nutrition-carbs" style={{ fontFeatureSettings: "'tnum' 1" }}>{remaining.carbs}</p><p className="text-[10px] text-muted-foreground">carbs</p></div>
+          <div><p className="font-data text-lg font-bold text-nutrition-fat" style={{ fontFeatureSettings: "'tnum' 1" }}>{remaining.fat}</p><p className="text-[10px] text-muted-foreground">fett</p></div>
         </div>
         {hour >= 18 && remaining.protein > 30 && (
           <p className="mt-3 text-xs text-primary">💡 Tips: Kvarg + nötter för att nå proteinmålet</p>
@@ -225,7 +225,7 @@ export default function Nutrition() {
               <div key={i} className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-3">
                 <div>
                   <p className="text-sm font-medium">{s.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{s.kcal} kcal · {s.protein}p · {s.carbs}c · {s.fat}f</p>
+                  <p className="font-data text-[10px] text-muted-foreground" style={{ fontFeatureSettings: "'tnum' 1" }}>{s.kcal} kcal · {s.protein}p · {s.carbs}c · {s.fat}f</p>
                 </div>
                 <button onClick={() => prefillSuggestion(s)} className="touch-target flex items-center justify-center rounded-lg bg-primary/10 p-2 text-primary transition-colors duration-200 hover:bg-primary/20">
                   <Plus className="h-4 w-4" />

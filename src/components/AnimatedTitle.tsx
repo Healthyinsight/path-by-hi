@@ -63,15 +63,24 @@ export function AnimatedTitle() {
   return (
     <div className="flex flex-col items-center text-center">
       <div className="leading-tight" style={{ letterSpacing: '0.02em' }}>
-        <div className="text-[3rem] md:text-[4rem] font-bold" style={{ fontFamily: "'Merriweather', serif" }}>
-          {showEmoji && <span style={{ ...wordStyle, marginRight: '0.3em' }}>{emoji}</span>}
-          <span style={wordStyle}>{word}</span>
-        </div>
+        {/* Single line: emoji + rotating word (fixed-width, right-aligned) + "Path Tracker" */}
         <div
-          className="text-[2.5rem] md:text-[3.5rem] font-bold text-foreground"
-          style={{ fontFamily: "'Merriweather', serif" }}
+          className="flex items-baseline justify-center text-[2.5rem] md:text-[3.5rem] font-bold"
+          style={{ fontFamily: "'Merriweather', serif", gap: '0.15em' }}
         >
-          Path Tracker
+          {showEmoji && <span style={{ ...wordStyle, fontSize: '0.8em' }}>{emoji}</span>}
+          <span
+            style={{
+              ...wordStyle,
+              display: 'inline-flex',
+              justifyContent: 'flex-end',
+              width: '9ch',
+              textAlign: 'right',
+            }}
+          >
+            {word}
+          </span>
+          <span className="text-foreground">Path Tracker</span>
         </div>
       </div>
       <p
