@@ -5,7 +5,6 @@ import { BottomNav } from '@/components/BottomNav';
 import { Check, Bike, Dumbbell, Waves, Target, Coffee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import type { TrainingSchedule } from '@/types/database';
 
 const sportIcons: Record<string, React.ReactNode> = {
   bike: <Bike className="h-5 w-5" />,
@@ -37,7 +36,7 @@ const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function Schedule() {
   const { user } = useAuth();
-  const [schedule, setSchedule] = useState<TrainingSchedule[]>([]);
+  const [schedule, setSchedule] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const weekDates = getWeekDates();
 

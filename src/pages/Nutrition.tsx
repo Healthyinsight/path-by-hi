@@ -8,7 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Utensils } from 'lucide-react';
 import { toast } from 'sonner';
-import type { NutritionPlan, Meal, TrainingSchedule } from '@/types/database';
+import type { Json } from '@/integrations/supabase/types';
+
+interface Meal {
+  name: string;
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
 
 const MACRO_TARGETS: Record<string, { kcal: number; protein: number; carbs: number; fat: number }> = {
   strength: { kcal: 2400, protein: 175, carbs: 250, fat: 75 },
@@ -21,7 +29,7 @@ const MACRO_TARGETS: Record<string, { kcal: number; protein: number; carbs: numb
 
 export default function Nutrition() {
   const { user } = useAuth();
-  const [plan, setPlan] = useState<NutritionPlan | null>(null);
+  const [plan, setPlan] = useState<any>(null);
   const [showAddMeal, setShowAddMeal] = useState(false);
   const [mealName, setMealName] = useState('');
   const [mealKcal, setMealKcal] = useState('');
@@ -55,7 +63,7 @@ export default function Nutrition() {
         .eq('date', today)
         .single();
 
-      const trainingType = (sched as TrainingSchedule)?.planned_subtype || (sched as TrainingSchedule)?.planned_type || 'rest';
+      const trainingType = sched?.planned_subtype || sched?.planned_type || 'rest';
       const targets = MACRO_TARGETS[trainingType] || MACRO_TARGETS.rest;
 
       const { data: newPlan } = await supabase
@@ -72,13 +80,18 @@ export default function Nutrition() {
           actual_protein: 0,
           actual_carbs: 0,
           actual_fat: 0,
-          meals: [],
+          meals: [] as unknown as Json,
         })
         .select()
         .single();
 
       if (newPlan) setPlan(newPlan);
     }
+  };
+
+  const getMeals = (): Meal[] => {
+    if (!plan?.meals) return [];
+    return (Array.isArray(plan.meals) ? plan.meals : []) as Meal[];
   };
 
   const addMeal = async () => {
@@ -91,17 +104,17 @@ export default function Nutrition() {
       fat: Number(mealFat) || 0,
     };
 
-    const updatedMeals = [...(plan.meals || []), meal];
+    const updatedMeals = [...getMeals(), meal];
     const newActuals = {
-      actual_kcal: plan.actual_kcal + meal.kcal,
-      actual_protein: plan.actual_protein + meal.protein,
-      actual_carbs: plan.actual_carbs + meal.carbs,
-      actual_fat: plan.actual_fat + meal.fat,
+      actual_kcal: (plan.actual_kcal || 0) + meal.kcal,
+      actual_protein: (plan.actual_protein || 0) + meal.protein,
+      actual_carbs: (plan.actual_carbs || 0) + meal.carbs,
+      actual_fat: (plan.actual_fat || 0) + meal.fat,
     };
 
     const { error } = await supabase
       .from('nutrition_plan')
-      .update({ meals: updatedMeals, ...newActuals })
+      .update({ meals: updatedMeals as unknown as Json, ...newActuals })
       .eq('id', plan.id);
 
     if (error) {
@@ -117,6 +130,8 @@ export default function Nutrition() {
       toast.success('Meal added!');
     }
   };
+
+  const meals = getMeals();
 
   return (
     <div className="app-container pt-6">
@@ -203,7 +218,7 @@ export default function Nutrition() {
 
       {/* Meal list */}
       <div className="space-y-2">
-        {(plan?.meals || []).map((meal, i) => (
+        {meals.map((meal, i) => (
           <div key={i} className="card-athletic flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Utensils className="h-4 w-4 text-muted-foreground" />

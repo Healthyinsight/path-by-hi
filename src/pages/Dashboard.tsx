@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { MacroRing } from '@/components/MacroRing';
 import { BottomNav } from '@/components/BottomNav';
 import { Battery, Moon, Heart, Target, Dumbbell, Bike, Waves } from 'lucide-react';
-import type { UserProfile, TrainingSchedule, BodyMetric, NutritionPlan } from '@/types/database';
 
 const RACE_DATE = new Date('2026-07-05');
 
@@ -35,12 +34,20 @@ const typeColors: Record<string, string> = {
   rest: 'bg-rest/20 text-rest border-rest/30',
 };
 
+interface Meal {
+  name: string;
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [todaySchedule, setTodaySchedule] = useState<TrainingSchedule | null>(null);
-  const [latestMetrics, setLatestMetrics] = useState<BodyMetric | null>(null);
-  const [todayNutrition, setTodayNutrition] = useState<NutritionPlan | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [todaySchedule, setTodaySchedule] = useState<any>(null);
+  const [latestMetrics, setLatestMetrics] = useState<any>(null);
+  const [todayNutrition, setTodayNutrition] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
