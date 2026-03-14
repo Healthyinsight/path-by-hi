@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Mail, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { AppHeader } from '@/components/AppHeader';
+import { AnimatedTitle } from '@/components/AnimatedTitle';
 
 export default function Login() {
   const [email, setEmail] = useState('');
