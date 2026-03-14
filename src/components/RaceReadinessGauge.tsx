@@ -37,7 +37,7 @@ export function RaceReadinessGauge({ breakdown, hasEnoughData }: Props) {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="font-mono text-2xl font-bold" style={{ color }}>
+            <span className="font-data text-2xl font-bold" style={{ color, fontFeatureSettings: "'tnum' 1" }}>
               {hasEnoughData ? `${total}%` : '–'}
             </span>
           </div>
