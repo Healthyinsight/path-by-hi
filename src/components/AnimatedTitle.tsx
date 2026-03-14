@@ -33,7 +33,7 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
       const glowTimer = setTimeout(() => setGlowing(false), 2000);
       return () => { clearTimeout(glowTimer); };
     }
-    const timer = setTimeout(() => setIndex(i => i + 1), TIMINGS[index] ?? 800);
+    const timer = setTimeout(() => setIndex(i => i + 1), TIMINGS[index] ?? 1500);
     return () => clearTimeout(timer);
   }, [index]);
 
