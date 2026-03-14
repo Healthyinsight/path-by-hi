@@ -42,7 +42,9 @@ export default function Login() {
       style={{ background: 'linear-gradient(180deg, hsl(195 38% 94%) 0%, hsl(210 20% 98%) 100%)' }}
     >
       <div className="w-full flex flex-col items-center space-y-12">
-        <AnimatedTitle />
+        <div className="w-full max-w-[480px] flex justify-center">
+          <AnimatedTitle />
+        </div>
 
         {sent ? (
           <div className="w-full max-w-[480px] rounded-2xl border border-border bg-card p-6 md:px-12 md:py-10 shadow-lg space-y-4 text-center">
