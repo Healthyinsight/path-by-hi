@@ -64,14 +64,16 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
           letterSpacing: '0.02em',
         }}
       >
-        {/* Line 1: Rotating word with emoji */}
+        {/* Rotating word with emoji */}
         <div
+          className="text-[3rem] sm:text-[4rem]"
           style={{
             textAlign: 'center',
             minHeight: '1.3em',
-            fontSize: '2.5rem',
+            fontFamily: "'Merriweather', serif",
+            fontWeight: 700,
+            letterSpacing: '0.02em',
           }}
-          className="sm:text-[3.5rem]"
         >
           <AnimatePresence mode="wait">
             <motion.span
@@ -83,7 +85,6 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
               style={{
                 display: 'inline-block',
                 color: current.color,
-                fontWeight: 700,
                 whiteSpace: 'nowrap',
                 textShadow: glowing && settled ? '0 0 12px rgba(80,149,172,0.3)' : 'none',
               }}
@@ -93,16 +94,16 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
           </AnimatePresence>
         </div>
 
-        {/* Line 2: Static "Path Tracker" */}
+        {/* Static "Path Tracker" */}
         <span
+          className="text-[3rem] sm:text-[4rem] text-foreground"
           style={{
+            fontFamily: "'Merriweather', serif",
             fontWeight: 700,
-            color: '#1A2B32',
+            letterSpacing: '0.02em',
             textAlign: 'center',
             whiteSpace: 'nowrap',
-            fontSize: '3rem',
           }}
-          className="sm:text-[4rem]"
         >
           Path Tracker
         </span>
