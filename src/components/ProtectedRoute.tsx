@@ -11,12 +11,12 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user) { setCheckingOnboarding(false); return; }
-    supabase
+    (supabase as any)
       .from('user_profiles')
       .select('onboarding_completed')
       .eq('user_id', user.id)
       .single()
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         setOnboardingCompleted(data?.onboarding_completed ?? false);
         setCheckingOnboarding(false);
       });

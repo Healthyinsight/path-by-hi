@@ -32,7 +32,7 @@ export function useUserProfile() {
 
   const fetchProfile = async () => {
     if (!user) { setLoading(false); return; }
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from('user_profiles')
       .select('*')
       .eq('user_id', user.id)
