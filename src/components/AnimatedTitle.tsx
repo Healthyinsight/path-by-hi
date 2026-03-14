@@ -50,38 +50,36 @@ export function AnimatedTitle() {
 
   const { word, emoji, color } = WORDS[index];
 
-  const wordStyle: React.CSSProperties = {
-    color,
-    display: 'inline-block',
-    willChange: settled ? 'auto' : 'transform, opacity',
-    transition: 'transform 120ms ease-out, opacity 120ms ease-out',
-    opacity: phase === 'out' || phase === 'in' ? 0 : 1,
-    transform: phase === 'out' ? 'translateY(-8px)' : phase === 'in' ? 'translateY(8px)' : 'translateY(0)',
-    textShadow: glowing ? '0 0 10px rgba(80,149,172,0.3)' : 'none',
-  };
+  const rotating = phase === 'out' || phase === 'in';
 
   return (
     <div className="flex flex-col items-center text-center">
-      <div className="leading-tight" style={{ letterSpacing: '0.02em' }}>
-        {/* Single line: emoji + rotating word (fixed-width, right-aligned) + "Path Tracker" */}
-        <div
-          className="flex items-baseline justify-center text-[2.5rem] md:text-[3.5rem] font-bold"
-          style={{ fontFamily: "'Merriweather', serif", gap: '0.15em' }}
+      <div
+        className="text-[2.5rem] md:text-[3.5rem] font-bold leading-tight"
+        style={{
+          fontFamily: "'Merriweather', serif",
+          letterSpacing: '0.02em',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <span
+          style={{
+            display: 'inline-block',
+            minWidth: '10ch',
+            textAlign: 'right',
+            color,
+            opacity: rotating ? 0 : 1,
+            transform: phase === 'out' ? 'translateY(-8px)' : phase === 'in' ? 'translateY(8px)' : 'translateY(0)',
+            transition: 'transform 120ms ease-out, opacity 120ms ease-out',
+            willChange: settled ? 'auto' : 'transform, opacity',
+            textShadow: glowing ? '0 0 10px rgba(80,149,172,0.3)' : 'none',
+          }}
         >
-          {showEmoji && <span style={{ ...wordStyle, fontSize: '0.8em' }}>{emoji}</span>}
-          <span
-            style={{
-              ...wordStyle,
-              display: 'inline-flex',
-              justifyContent: 'flex-end',
-              width: '9ch',
-              textAlign: 'right',
-            }}
-          >
-            {word}
-          </span>
-          <span className="text-foreground">Path Tracker</span>
-        </div>
+          {showEmoji && <span style={{ marginRight: '0.2em' }}>{emoji}</span>}
+          {word}
+        </span>
+        {' '}
+        <span className="text-foreground">Path Tracker</span>
       </div>
       <p
         className="mt-8 text-muted-foreground"
