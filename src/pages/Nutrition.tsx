@@ -203,10 +203,10 @@ export default function Nutrition() {
       <div className="card-athletic mb-4">
         <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Kvar att äta idag</p>
         <div className="grid grid-cols-4 gap-2 text-center">
-          <div><p className="font-mono text-lg font-bold">{remaining.kcal}</p><p className="text-[10px] text-muted-foreground">kcal</p></div>
-          <div><p className="font-mono text-lg font-bold text-nutrition-protein">{remaining.protein}</p><p className="text-[10px] text-muted-foreground">protein</p></div>
-          <div><p className="font-mono text-lg font-bold text-nutrition-carbs">{remaining.carbs}</p><p className="text-[10px] text-muted-foreground">carbs</p></div>
-          <div><p className="font-mono text-lg font-bold text-nutrition-fat">{remaining.fat}</p><p className="text-[10px] text-muted-foreground">fett</p></div>
+          <div><p className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{remaining.kcal}</p><p className="text-[10px] text-muted-foreground">kcal</p></div>
+          <div><p className="font-data text-lg font-bold text-nutrition-protein" style={{ fontFeatureSettings: "'tnum' 1" }}>{remaining.protein}</p><p className="text-[10px] text-muted-foreground">protein</p></div>
+          <div><p className="font-data text-lg font-bold text-nutrition-carbs" style={{ fontFeatureSettings: "'tnum' 1" }}>{remaining.carbs}</p><p className="text-[10px] text-muted-foreground">carbs</p></div>
+          <div><p className="font-data text-lg font-bold text-nutrition-fat" style={{ fontFeatureSettings: "'tnum' 1" }}>{remaining.fat}</p><p className="text-[10px] text-muted-foreground">fett</p></div>
         </div>
         {hour >= 18 && remaining.protein > 30 && (
           <p className="mt-3 text-xs text-primary">💡 Tips: Kvarg + nötter för att nå proteinmålet</p>
