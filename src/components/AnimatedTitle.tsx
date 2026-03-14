@@ -19,12 +19,12 @@ export function AnimatedTitle() {
   const [settled, setSettled] = useState(false);
   const [showEmoji, setShowEmoji] = useState(true);
   const [glowing, setGlowing] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const scheduleRef = useRef<ReturnType<typeof setTimeout>>();
 
   const advance = useCallback(() => {
     if (settled) return;
     setPhase('out');
-    timerRef.current = setTimeout(() => {
+    setTimeout(() => {
       setIndex(prev => {
         const next = prev + 1;
         if (next >= WORDS.length - 1) {
@@ -37,19 +37,18 @@ export function AnimatedTitle() {
         return next;
       });
       setPhase('in');
-      timerRef.current = setTimeout(() => setPhase('visible'), 120);
+      setTimeout(() => setPhase('visible'), 120);
     }, 120);
   }, [settled]);
 
   useEffect(() => {
     if (settled || phase !== 'visible') return;
     if (index >= WORDS.length - 1) return;
-    timerRef.current = setTimeout(advance, DELAYS[index] ?? 400);
-    return () => clearTimeout(timerRef.current);
+    scheduleRef.current = setTimeout(advance, DELAYS[index] ?? 400);
+    return () => clearTimeout(scheduleRef.current);
   }, [index, phase, settled, advance]);
 
   const { word, emoji, color } = WORDS[index];
-
   const rotating = phase === 'out' || phase === 'in';
 
   return (
