@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 
 const WORDS = [
   { word: "Iron",     emoji: "🏊", color: "#E53935" },
@@ -11,8 +12,7 @@ const WORDS = [
   { word: "The",      emoji: "✨", color: "#5095AC" },
 ];
 
-const DELAYS = [400, 400, 400, 500, 500, 700, 900];
-const TRANSITION_MS = 300;
+const TIMINGS = [400, 400, 400, 500, 500, 700, 900];
 const RESTART_DELAY = 30_000;
 
 interface AnimatedTitleProps {
@@ -20,68 +20,56 @@ interface AnimatedTitleProps {
 }
 
 export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [nextIndex, setNextIndex] = useState<number | null>(null);
-  const [transitioning, setTransitioning] = useState(false);
+  const [index, setIndex] = useState(0);
   const [settled, setSettled] = useState(false);
+  const [emojiVisible, setEmojiVisible] = useState(true);
   const [glowing, setGlowing] = useState(false);
-  const [slotWidth, setSlotWidth] = useState<number>(0);
-  const scheduleRef = useRef<ReturnType<typeof setTimeout>>();
+  const [fixedWidth, setFixedWidth] = useState<number | null>(null);
+  const containerRef = useRef<HTMLSpanElement>(null);
   const restartRef = useRef<ReturnType<typeof setTimeout>>();
-  const measureRef = useRef<HTMLDivElement>(null);
 
   // Measure widest word on mount
-  useLayoutEffect(() => {
-    if (!measureRef.current) return;
-    const spans = measureRef.current.querySelectorAll('span');
-    let max = 0;
-    spans.forEach(s => {
-      const w = s.getBoundingClientRect().width;
-      if (w > max) max = w;
+  useEffect(() => {
+    const measurer = document.createElement('span');
+    measurer.style.cssText =
+      'position:absolute;visibility:hidden;white-space:nowrap;pointer-events:none;';
+    measurer.style.fontFamily = "'Merriweather', serif";
+    measurer.style.fontWeight = '700';
+    measurer.style.letterSpacing = '0.02em';
+    // Match responsive font size
+    const fontSize = window.innerWidth < 640 ? '2.2rem' : window.innerWidth < 768 ? '2.5rem' : '3.5rem';
+    measurer.style.fontSize = fontSize;
+    document.body.appendChild(measurer);
+    let maxW = 0;
+    WORDS.forEach(w => {
+      measurer.textContent = `${w.emoji}\u00A0${w.word}`;
+      maxW = Math.max(maxW, measurer.getBoundingClientRect().width);
     });
-    setSlotWidth(Math.ceil(max) + 2);
+    document.body.removeChild(measurer);
+    setFixedWidth(Math.ceil(maxW) + 4);
   }, []);
+
+  // Cycle through words
+  useEffect(() => {
+    if (index >= WORDS.length - 1) {
+      setSettled(true);
+      setGlowing(true);
+      // Fade emoji after 1s
+      const emojiTimer = setTimeout(() => setEmojiVisible(false), 1000);
+      // Stop glow after 2s
+      const glowTimer = setTimeout(() => setGlowing(false), 2000);
+      return () => { clearTimeout(emojiTimer); clearTimeout(glowTimer); };
+    }
+    const timer = setTimeout(() => setIndex(i => i + 1), TIMINGS[index] ?? 400);
+    return () => clearTimeout(timer);
+  }, [index]);
 
   const resetAnimation = useCallback(() => {
-    setCurrentIndex(0);
-    setNextIndex(null);
-    setTransitioning(false);
+    setIndex(0);
     setSettled(false);
+    setEmojiVisible(true);
     setGlowing(false);
   }, []);
-
-  const advance = useCallback(() => {
-    if (settled) return;
-    const next = currentIndex + 1;
-    if (next >= WORDS.length) return;
-
-    setNextIndex(next);
-    // Force a frame so "waiting" position renders, then trigger transition
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setTransitioning(true);
-      });
-    });
-
-    setTimeout(() => {
-      setCurrentIndex(next);
-      setNextIndex(null);
-      setTransitioning(false);
-      if (next >= WORDS.length - 1) {
-        setSettled(true);
-        setGlowing(true);
-        setTimeout(() => setGlowing(false), 3000);
-      }
-    }, TRANSITION_MS + 20);
-  }, [currentIndex, settled]);
-
-  // Drive word rotation
-  useEffect(() => {
-    if (settled || transitioning) return;
-    if (currentIndex >= WORDS.length - 1) return;
-    scheduleRef.current = setTimeout(advance, DELAYS[currentIndex] ?? 400);
-    return () => clearTimeout(scheduleRef.current);
-  }, [currentIndex, settled, transitioning, advance]);
 
   // Restart after 30s if idle
   useEffect(() => {
@@ -90,33 +78,10 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
     return () => clearTimeout(restartRef.current);
   }, [settled, idle, resetAnimation]);
 
-  const current = WORDS[currentIndex];
-  const next = nextIndex !== null ? WORDS[nextIndex] : null;
+  const current = WORDS[index];
 
   return (
     <div className="flex flex-col items-center w-full">
-      {/* Hidden measurement container */}
-      <div
-        ref={measureRef}
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          visibility: 'hidden',
-          pointerEvents: 'none',
-          fontFamily: "'Merriweather', serif",
-          fontWeight: 700,
-          letterSpacing: '0.02em',
-          whiteSpace: 'nowrap',
-        }}
-        className="text-[2.2rem] sm:text-[2.5rem] md:text-[3.5rem]"
-      >
-        {WORDS.map((w, i) => (
-          <span key={i} style={{ display: 'block' }}>
-            {w.emoji}&nbsp;{w.word}
-          </span>
-        ))}
-      </div>
-
       <div
         className="inline-flex items-baseline justify-center whitespace-nowrap text-[2.2rem] sm:text-[2.5rem] md:text-[3.5rem] font-bold leading-tight"
         style={{
@@ -124,54 +89,50 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
           letterSpacing: '0.02em',
         }}
       >
-        {/* Slot container */}
+        {/* Rotating word container — fixed width, right-aligned */}
         <span
+          ref={containerRef}
           style={{
-            display: 'inline-block',
-            overflow: 'hidden',
-            height: '1.2em',
-            width: slotWidth > 0 ? slotWidth : '9ch',
+            display: 'inline-flex',
+            justifyContent: 'flex-end',
+            alignItems: 'baseline',
+            width: fixedWidth ? `${fixedWidth}px` : '10ch',
             position: 'relative',
+            height: '1.2em',
             verticalAlign: 'baseline',
-            textAlign: 'right',
           }}
         >
-          {/* Current word */}
-          <span
-            style={{
-              display: 'block',
-              position: 'absolute',
-              width: '100%',
-              textAlign: 'right',
-              right: 0,
-              color: current.color,
-              transform: transitioning ? 'translateY(-100%)' : 'translateY(0)',
-              transition: transitioning ? `transform ${TRANSITION_MS}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)` : 'none',
-              willChange: settled ? 'auto' : 'transform',
-              textShadow: glowing ? '0 0 10px rgba(80,149,172,0.3)' : 'none',
-            }}
-          >
-            {current.emoji}&nbsp;{current.word}
-          </span>
-
-          {/* Next word */}
-          {next && (
-            <span
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={index}
+              initial={{ y: '60%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '-60%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 250 }}
               style={{
-                display: 'block',
-                position: 'absolute',
-                width: '100%',
-                textAlign: 'right',
-                right: 0,
-                color: next.color,
-                transform: transitioning ? 'translateY(0)' : 'translateY(100%)',
-                transition: transitioning ? `transform ${TRANSITION_MS}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)` : 'none',
-                willChange: 'transform',
+                display: 'inline-block',
+                color: current.color,
+                whiteSpace: 'nowrap',
+                textShadow: glowing && settled ? '0 0 12px rgba(80,149,172,0.3)' : 'none',
               }}
             >
-              {next.emoji}&nbsp;{next.word}
-            </span>
-          )}
+              {settled ? (
+                <>
+                  <motion.span
+                    initial={{ opacity: 1 }}
+                    animate={{ opacity: emojiVisible ? 1 : 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    {current.emoji}
+                  </motion.span>
+                  {emojiVisible ? '\u00A0' : ''}
+                  {current.word}
+                </>
+              ) : (
+                <>{current.emoji}&nbsp;{current.word}</>
+              )}
+            </motion.span>
+          </AnimatePresence>
         </span>
 
         <span className="text-foreground" style={{ marginLeft: '0.3em' }}>
