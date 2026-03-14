@@ -45,7 +45,7 @@ export default function Login() {
         <AnimatedTitle />
 
         {sent ? (
-          <div className="rounded-2xl border border-border bg-card p-6 md:px-12 md:py-10 shadow-lg space-y-4 text-center">
+          <div className="w-full max-w-[480px] rounded-2xl border border-border bg-card p-6 md:px-12 md:py-10 shadow-lg space-y-4 text-center">
             <CheckCircle className="mx-auto h-12 w-12 text-primary" />
             <div>
               <p className="text-lg font-semibold text-foreground">Kolla din inkorg!</p>
