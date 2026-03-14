@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Mail, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { AppHeader } from '@/components/AppHeader';
+import { AnimatedTitle } from '@/components/AnimatedTitle';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -39,7 +39,7 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-[380px] space-y-8">
-        <AppHeader />
+        <AnimatedTitle />
 
         {sent ? (
           <div className="card-athletic space-y-4 text-center">

@@ -1,6 +1,6 @@
 {
-  "name": "Ironman 70.3 Training",
-  "short_name": "IM703",
+  "name": "The Path Tracker",
+  "short_name": "PathTracker",
   "description": "Personal Ironman 70.3 training and nutrition tracker",
   "start_url": "/",
   "display": "standalone",
