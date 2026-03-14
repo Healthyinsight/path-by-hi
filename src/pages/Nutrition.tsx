@@ -186,7 +186,7 @@ export default function Nutrition() {
                 <Utensils className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">{meal.name}</p>
-                  <div className="flex gap-2 text-[10px] text-muted-foreground">
+                  <div className="flex gap-2 font-data text-[10px] text-muted-foreground" style={{ fontFeatureSettings: "'tnum' 1" }}>
                     <span>{meal.kcal} kcal</span><span>{meal.protein}p</span><span>{meal.carbs}c</span><span>{meal.fat}f</span>
                   </div>
                 </div>
