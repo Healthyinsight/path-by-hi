@@ -38,14 +38,14 @@ export default function Login() {
 
   return (
     <div
-      className="flex min-h-screen items-center justify-center px-4"
+      className="flex min-h-screen flex-col items-center justify-center px-4"
       style={{ background: 'linear-gradient(180deg, hsl(195 38% 94%) 0%, hsl(210 20% 98%) 100%)' }}
     >
-      <div className="w-full max-w-[480px] space-y-12">
+      <div className="w-full flex flex-col items-center space-y-12">
         <AnimatedTitle />
 
         {sent ? (
-          <div className="rounded-2xl border border-border bg-card p-6 md:px-12 md:py-10 shadow-lg space-y-4 text-center">
+          <div className="w-full max-w-[480px] rounded-2xl border border-border bg-card p-6 md:px-12 md:py-10 shadow-lg space-y-4 text-center">
             <CheckCircle className="mx-auto h-12 w-12 text-primary" />
             <div>
               <p className="text-lg font-semibold text-foreground">Kolla din inkorg!</p>
@@ -64,7 +64,7 @@ export default function Login() {
         ) : (
           <form
             onSubmit={handleMagicLink}
-            className="rounded-2xl border border-border bg-card p-6 md:px-12 md:py-10 shadow-lg space-y-5"
+            className="w-full max-w-[480px] rounded-2xl border border-border bg-card p-6 md:px-12 md:py-10 shadow-lg space-y-5"
           >
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">Din e-postadress</Label>
