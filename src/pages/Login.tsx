@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Mail, CheckCircle } from 'lucide-react';
+import { Loader2, Mail, CheckCircle, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { AnimatedTitle } from '@/components/AnimatedTitle';
 
@@ -37,12 +37,15 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-[380px] space-y-8">
+    <div
+      className="flex min-h-screen items-center justify-center px-4"
+      style={{ background: 'linear-gradient(180deg, hsl(195 38% 94%) 0%, hsl(210 20% 98%) 100%)' }}
+    >
+      <div className="w-full max-w-[480px] space-y-12">
         <AnimatedTitle />
 
         {sent ? (
-          <div className="card-athletic space-y-4 text-center">
+          <div className="rounded-2xl border border-border bg-card p-6 md:px-12 md:py-10 shadow-lg space-y-4 text-center">
             <CheckCircle className="mx-auto h-12 w-12 text-primary" />
             <div>
               <p className="text-lg font-semibold text-foreground">Kolla din inkorg!</p>
@@ -59,27 +62,32 @@ export default function Login() {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleMagicLink} className="card-athletic space-y-5">
+          <form
+            onSubmit={handleMagicLink}
+            className="rounded-2xl border border-border bg-card p-6 md:px-12 md:py-10 shadow-lg space-y-5"
+          >
             <div className="space-y-2">
-              <Label htmlFor="email">Din e-postadress</Label>
+              <Label htmlFor="email" className="text-sm font-medium">Din e-postadress</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="namn@example.com"
+                placeholder="din@email.se"
                 required
+                className="h-[52px] text-base rounded-lg ring-offset-background focus-visible:ring-2 focus-visible:ring-primary"
               />
             </div>
-            <Button type="submit" className="w-full touch-target" disabled={loading}>
+            <Button type="submit" className="w-full h-[52px] text-base font-semibold rounded-lg" disabled={loading}>
               {loading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Mail className="mr-2 h-4 w-4" />
               )}
-              Skicka inloggningslänk
+              Skicka inloggningslänk →
             </Button>
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="flex items-center justify-center gap-1.5 text-center text-[0.85rem] text-muted-foreground">
+              <Lock className="h-3.5 w-3.5" />
               Inget lösenord behövs. Vi skickar en säker länk till din email.
             </p>
           </form>
