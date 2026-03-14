@@ -43,7 +43,7 @@ export default function Login() {
     >
       <div className="w-full flex flex-col items-center space-y-12">
         <div className="w-full max-w-[480px] flex justify-center">
-          <AnimatedTitle />
+          <AnimatedTitle idle={!email} />
         </div>
 
         {sent ? (
