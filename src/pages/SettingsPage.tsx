@@ -5,7 +5,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LogOut, Watch, Check, Loader2, Mail } from 'lucide-react';
+import { LogOut, Watch, Check, Loader2, Mail, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import type { UserProfile } from '@/types/database';
 
@@ -14,12 +14,20 @@ const PHASES = ['base', 'build', 'peak', 'taper'];
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const [profile, setProfile] = useState<Partial<UserProfile>>({});
+  const [goal, setGoal] = useState<{ goal_name: string; goal_date: string; goal_emoji: string }>({
+    goal_name: '', goal_date: '', goal_emoji: '🏁',
+  });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    supabase.from('users').select('*').eq('id', user.id).single()
-      .then(({ data }) => { if (data) setProfile(data); });
+    Promise.all([
+      supabase.from('users').select('*').eq('id', user.id).single(),
+      supabase.from('user_goals').select('*').eq('user_id', user.id).single(),
+    ]).then(([profileRes, goalRes]) => {
+      if (profileRes.data) setProfile(profileRes.data);
+      if (goalRes.data) setGoal({ goal_name: goalRes.data.goal_name, goal_date: goalRes.data.goal_date, goal_emoji: goalRes.data.goal_emoji || '🏁' });
+    });
   }, [user]);
 
   const update = (field: string, value: string | number) => {
