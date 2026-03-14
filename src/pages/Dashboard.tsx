@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { MacroRing } from '@/components/MacroRing';
 import { BottomNav } from '@/components/BottomNav';
+import { AppHeader } from '@/components/AppHeader';
 import {
   Battery, Moon, Heart, Target, Dumbbell, Bike, Waves, Check,
   ChevronDown, ChevronUp, Plus,
@@ -40,10 +41,10 @@ const subtypeLabels: Record<string, string> = {
   long_swim: 'Långsim', technique_intervals: 'Teknik & Intervaller',
 };
 const typeColors: Record<string, string> = {
-  cardio: 'bg-cardio/20 text-cardio border-cardio/30',
-  strength: 'bg-strength/20 text-strength border-strength/30',
-  swim: 'bg-swim/20 text-swim border-swim/30',
-  rest: 'bg-rest/20 text-rest border-rest/30',
+  cardio: 'bg-primary/10 text-primary border-primary/20',
+  strength: 'bg-secondary/10 text-secondary border-secondary/20',
+  swim: 'bg-swim/10 text-swim border-swim/20',
+  rest: 'bg-rest/10 text-rest border-rest/20',
 };
 
 function getWeekDates(): Date[] {
@@ -105,7 +106,6 @@ export default function Dashboard() {
   const completedCount = weekSchedule.filter((s) => s.completed).length;
   const totalPlanned = weekSchedule.length;
 
-  // Weekly nutrition chart data
   const chartData = weekDates.map((date, i) => {
     const dateStr = fmtDate(date);
     const entry = weekNutrition.find((n) => n.date === dateStr);
@@ -116,7 +116,6 @@ export default function Dashboard() {
     };
   });
 
-  // Recomp
   const currentWeight = latestMetrics?.weight || profile?.current_weight || 82;
   const weekDeficit = weekNutrition.reduce((sum, n) => {
     const diff = (n.actual_kcal || 0) - (n.target_kcal || 0);
@@ -124,9 +123,11 @@ export default function Dashboard() {
   }, 0);
 
   return (
-    <div className="app-container pt-6">
+    <div className="app-container pt-2">
+      <AppHeader />
+
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">{getGreeting()}, {userName}</h1>
+        <h2 className="text-xl tracking-tight">{getGreeting()}, {userName}</h2>
         <p className="text-sm text-muted-foreground">Låt oss krossa dagens träning</p>
       </div>
 
@@ -184,7 +185,7 @@ export default function Dashboard() {
             return (
               <div key={dateStr} className="flex flex-col items-center gap-1">
                 <span className="text-[10px] text-muted-foreground">{DAY_LABELS[(date.getDay() + 6) % 7]}</span>
-                <div className={`h-4 w-4 rounded-full border-2 transition-all ${
+                <div className={`h-4 w-4 rounded-full border-2 transition-all duration-200 ${
                   workout?.completed ? 'border-rest bg-rest'
                   : workout ? `border-primary ${isToday ? 'bg-primary/30' : 'bg-transparent'}`
                   : 'border-muted-foreground/30 bg-transparent'
@@ -197,7 +198,7 @@ export default function Dashboard() {
       </div>
 
       {/* Nutrition summary */}
-      <div className="card-athletic mb-4 cursor-pointer" onClick={() => navigate('/nutrition')}>
+      <div className="card-athletic mb-4 cursor-pointer transition-all duration-200 hover:shadow-md" onClick={() => navigate('/nutrition')}>
         <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Dagens näring</p>
         {todayNutrition ? (
           <div className="flex items-center justify-around">
@@ -220,16 +221,16 @@ export default function Dashboard() {
           <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Veckans kalorier</p>
           <ResponsiveContainer width="100%" height={120}>
             <BarChart data={chartData} barGap={2}>
-              <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'hsl(215 20.2% 65.1%)' }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'hsl(200 12% 50%)' }} axisLine={false} tickLine={false} />
               <YAxis hide />
               <Bar dataKey="target" radius={[4, 4, 0, 0]} barSize={16}>
                 {chartData.map((_, i) => (
-                  <Cell key={i} fill="hsl(217.2 32.6% 25%)" />
+                  <Cell key={i} fill="hsl(207 22% 91%)" />
                 ))}
               </Bar>
               <Bar dataKey="consumed" radius={[4, 4, 0, 0]} barSize={16}>
                 {chartData.map((entry, i) => (
-                  <Cell key={i} fill={entry.consumed > 0 ? 'hsl(217 91% 60%)' : 'transparent'} />
+                  <Cell key={i} fill={entry.consumed > 0 ? 'hsl(195 38% 50%)' : 'transparent'} />
                 ))}
               </Bar>
             </BarChart>
@@ -281,15 +282,15 @@ export default function Dashboard() {
             {zonesOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-3 space-y-2">
-            <div className="rounded-xl border border-border bg-background/50 p-3">
-              <p className="text-xs font-semibold text-cardio">🚴 Cykel</p>
+            <div className="rounded-xl border border-border bg-muted/50 p-3">
+              <p className="text-xs font-semibold text-primary">🚴 Cykel</p>
               <p className="text-sm">Z2: 140-165W | Z5: 250-270W</p>
             </div>
-            <div className="rounded-xl border border-border bg-background/50 p-3">
-              <p className="text-xs font-semibold text-cardio">🏃 Löpning</p>
+            <div className="rounded-xl border border-border bg-muted/50 p-3">
+              <p className="text-xs font-semibold text-primary">🏃 Löpning</p>
               <p className="text-sm">Z2: 5:15-5:45/km | Z5: 4:00-4:15/km</p>
             </div>
-            <div className="rounded-xl border border-border bg-background/50 p-3">
+            <div className="rounded-xl border border-border bg-muted/50 p-3">
               <p className="text-xs font-semibold text-muted-foreground">Tröskelvärden</p>
               <p className="text-sm">FTP: {profile?.ftp_watts || 230}W | Löptröskel: {profile?.run_threshold_pace || '4:30'}/km</p>
             </div>
