@@ -59,7 +59,7 @@ export default function SettingsPage() {
 
   const retakeQuiz = async () => {
     if (!user) return;
-    await supabase.from('user_profiles').update({ onboarding_completed: false }).eq('user_id', user.id);
+    await (supabase as any).from('user_profiles').update({ onboarding_completed: false }).eq('user_id', user.id);
     navigate('/onboarding', { replace: true });
   };
 

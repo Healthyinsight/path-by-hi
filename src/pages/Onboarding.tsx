@@ -269,7 +269,7 @@ export default function Onboarding() {
     setSaving(true);
     const profileData = buildProfileData();
 
-    const { error: profileError } = await supabase.from('user_profiles').insert(profileData);
+    const { error: profileError } = await (supabase as any).from('user_profiles').insert(profileData);
     if (profileError) {
       toast.error('Kunde inte spara profil');
       setSaving(false);
