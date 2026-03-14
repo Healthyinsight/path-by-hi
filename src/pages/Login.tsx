@@ -38,10 +38,10 @@ export default function Login() {
 
   return (
     <div
-      className="flex min-h-screen items-center justify-center px-4"
+      className="flex min-h-screen flex-col items-center justify-center px-4"
       style={{ background: 'linear-gradient(180deg, hsl(195 38% 94%) 0%, hsl(210 20% 98%) 100%)' }}
     >
-      <div className="w-full max-w-[480px] space-y-12">
+      <div className="w-full flex flex-col items-center space-y-12">
         <AnimatedTitle />
 
         {sent ? (
