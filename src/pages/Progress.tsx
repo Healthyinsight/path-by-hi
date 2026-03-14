@@ -12,30 +12,24 @@ export default function Progress() {
   useEffect(() => {
     if (!user) return;
     supabase
-      .from('body_metrics')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false })
-      .limit(1)
-      .single()
-      .then(({ data }) => {
-        if (data) setMetrics(data);
-      });
+      .from('body_metrics').select('*').eq('user_id', user.id)
+      .order('date', { ascending: false }).limit(1).single()
+      .then(({ data }) => { if (data) setMetrics(data); });
   }, [user]);
 
   const stats = [
-    { label: 'Weight', value: metrics?.weight, unit: 'kg', icon: Scale },
-    { label: 'Body Fat', value: metrics?.body_fat_pct, unit: '%', icon: Percent },
-    { label: 'VO2max Run', value: metrics?.vo2max_run, unit: '', icon: Activity },
-    { label: 'Resting HR', value: metrics?.resting_hr, unit: 'bpm', icon: Heart },
+    { label: 'Vikt', value: metrics?.weight, unit: 'kg', icon: Scale },
+    { label: 'Kroppsfett', value: metrics?.body_fat_pct, unit: '%', icon: Percent },
+    { label: 'VO2max', value: metrics?.vo2max_run, unit: '', icon: Activity },
+    { label: 'Vilopuls', value: metrics?.resting_hr, unit: 'bpm', icon: Heart },
   ];
 
   return (
     <div className="app-container pt-6">
-      <h1 className="mb-2 text-2xl font-bold tracking-tight">Progress</h1>
-      <p className="mb-6 rounded-xl bg-primary/10 p-3 text-sm text-primary">
-        Trendgrafer och analytics kommer i nästa fas
-      </p>
+      <h1 className="mb-2 text-xl tracking-tight">Progress</h1>
+      <div className="tip-callout mb-6">
+        <p className="text-sm text-primary">Trendgrafer och analytics kommer i nästa fas</p>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         {stats.map(({ label, value, unit, icon: Icon }) => (
@@ -51,7 +45,7 @@ export default function Progress() {
 
       {metrics && (
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Last updated: {new Date(metrics.date).toLocaleDateString()}
+          Senast uppdaterad: {new Date(metrics.date).toLocaleDateString('sv-SE')}
         </p>
       )}
 

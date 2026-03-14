@@ -1,12 +1,12 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Apple, TrendingUp, Settings } from 'lucide-react';
+import { Home, Calendar, Apple, TrendingUp, Settings } from 'lucide-react';
 
 const tabs = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/schedule', label: 'Schedule', icon: Calendar },
-  { path: '/nutrition', label: 'Nutrition', icon: Apple },
+  { path: '/', label: 'Hem', icon: Home },
+  { path: '/schedule', label: 'Schema', icon: Calendar },
+  { path: '/nutrition', label: 'Kost', icon: Apple },
   { path: '/progress', label: 'Progress', icon: TrendingUp },
-  { path: '/settings', label: 'Settings', icon: Settings },
+  { path: '/settings', label: 'Inställningar', icon: Settings },
 ];
 
 export function BottomNav() {
@@ -14,7 +14,7 @@ export function BottomNav() {
   const navigate = useNavigate();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-md">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-muted/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-[480px] items-center justify-around py-2">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
@@ -23,7 +23,7 @@ export function BottomNav() {
             <button
               key={tab.path}
               onClick={() => navigate(tab.path)}
-              className={`touch-target flex flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 transition-colors ${
+              className={`touch-target flex flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 transition-all duration-200 ${
                 isActive
                   ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground'

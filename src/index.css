@@ -1,55 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Merriweather+Sans:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 222.2 47.4% 11.2%;
-    --foreground: 210 40% 98%;
+    --background: 210 20% 98%;
+    --foreground: 195 30% 15%;
 
-    --card: 217.2 32.6% 17.5%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 195 30% 15%;
 
-    --popover: 217.2 32.6% 17.5%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 195 30% 15%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 195 38% 50%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 147 12% 57%;
+    --secondary-foreground: 147 15% 20%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 210 14% 95%;
+    --muted-foreground: 200 12% 50%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 72 65% 70%;
+    --accent-foreground: 72 40% 25%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 4 74% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 25%;
-    --input: 217.2 32.6% 25%;
-    --ring: 217 91% 60%;
+    --border: 207 22% 91%;
+    --input: 207 22% 91%;
+    --ring: 195 38% 50%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
-    --strength: 25 95% 53%;
-    --swim: 258 90% 66%;
-    --rest: 142 71% 45%;
-    --cardio: 217 91% 60%;
-    --nutrition-protein: 350 80% 60%;
-    --nutrition-carbs: 38 92% 50%;
-    --nutrition-fat: 142 71% 45%;
+    --success: 122 39% 49%;
+    --warning: 36 100% 50%;
 
-    --sidebar-background: 222.2 47.4% 11.2%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 25%;
-    --sidebar-ring: 217 91% 60%;
+    --strength: 147 12% 57%;
+    --swim: 195 50% 65%;
+    --rest: 122 39% 49%;
+    --cardio: 195 38% 50%;
+
+    --nutrition-protein: 4 74% 55%;
+    --nutrition-carbs: 72 65% 70%;
+    --nutrition-fat: 147 12% 57%;
+
+    --sidebar-background: 210 14% 96%;
+    --sidebar-foreground: 195 30% 15%;
+    --sidebar-primary: 195 38% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 14% 95%;
+    --sidebar-accent-foreground: 195 30% 15%;
+    --sidebar-border: 207 22% 91%;
+    --sidebar-ring: 195 38% 50%;
   }
 }
 
@@ -60,7 +66,12 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Merriweather Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Merriweather', serif;
+    font-weight: 700;
   }
 }
 
@@ -70,7 +81,7 @@
   }
 
   .card-athletic {
-    @apply rounded-2xl border border-border bg-card p-4;
+    @apply rounded-xl border border-border bg-card p-4 shadow-sm;
   }
 
   .touch-target {
@@ -79,5 +90,9 @@
 
   .app-container {
     @apply mx-auto max-w-[480px] min-h-screen px-4 pb-24;
+  }
+
+  .tip-callout {
+    @apply rounded-xl border-l-4 border-primary bg-primary/5 p-4;
   }
 }

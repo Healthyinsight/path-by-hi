@@ -47,6 +47,8 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
         strength: "hsl(var(--strength))",
         swim: "hsl(var(--swim))",
         rest: "hsl(var(--rest))",
