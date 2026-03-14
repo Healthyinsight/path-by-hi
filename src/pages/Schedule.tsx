@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { BottomNav } from '@/components/BottomNav';
 import { Check, Bike, Dumbbell, Waves, Target, Coffee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
