@@ -284,6 +284,36 @@ export type Database = {
           },
         ]
       }
+      user_goals: {
+        Row: {
+          created_at: string | null
+          disciplines: string[] | null
+          goal_date: string
+          goal_emoji: string | null
+          goal_name: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          disciplines?: string[] | null
+          goal_date: string
+          goal_emoji?: string | null
+          goal_name: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          disciplines?: string[] | null
+          goal_date?: string
+          goal_emoji?: string | null
+          goal_name?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           body_fat_pct: number | null
