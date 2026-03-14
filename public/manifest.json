@@ -1,0 +1,17 @@
+{
+  "name": "Ironman 70.3 Training",
+  "short_name": "IM703",
+  "description": "Personal Ironman 70.3 training and nutrition tracker",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F172A",
+  "theme_color": "#3B82F6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
