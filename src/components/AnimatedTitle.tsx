@@ -53,20 +53,26 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
 
   return (
     <div className="flex flex-col items-center w-full">
-      {/* 3-column grid: rotating word (right-aligned) | Path Tracker (center) | empty spacer */}
+      {/* Two-line stacked layout */}
       <div
-        className="text-[2.2rem] sm:text-[2.5rem] md:text-[3.5rem] font-bold leading-tight"
         style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr auto 1fr',
-          alignItems: 'baseline',
-          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '0.2em',
           fontFamily: "'Merriweather', serif",
           letterSpacing: '0.02em',
         }}
       >
-        {/* Column 1: rotating word, right-aligned */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline' }}>
+        {/* Line 1: Rotating word with emoji */}
+        <div
+          style={{
+            textAlign: 'center',
+            minHeight: '1.3em',
+            fontSize: '2.5rem',
+          }}
+          className="sm:text-[3.5rem]"
+        >
           <AnimatePresence mode="wait">
             <motion.span
               key={index}
@@ -77,6 +83,7 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
               style={{
                 display: 'inline-block',
                 color: current.color,
+                fontWeight: 700,
                 whiteSpace: 'nowrap',
                 textShadow: glowing && settled ? '0 0 12px rgba(80,149,172,0.3)' : 'none',
               }}
@@ -86,19 +93,19 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
           </AnimatePresence>
         </div>
 
-        {/* Column 2: "Path Tracker" — center anchor */}
+        {/* Line 2: Static "Path Tracker" */}
         <span
-          className="text-foreground"
           style={{
-            paddingLeft: '0.3em',
+            fontWeight: 700,
+            color: '#1A2B32',
+            textAlign: 'center',
             whiteSpace: 'nowrap',
+            fontSize: '3rem',
           }}
+          className="sm:text-[4rem]"
         >
           Path Tracker
         </span>
-
-        {/* Column 3: empty spacer for symmetry */}
-        <div></div>
       </div>
 
       <p
