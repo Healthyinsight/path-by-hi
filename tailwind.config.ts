@@ -51,6 +51,9 @@ export default {
         swim: "hsl(var(--swim))",
         rest: "hsl(var(--rest))",
         cardio: "hsl(var(--cardio))",
+        "nutrition-protein": "hsl(var(--nutrition-protein))",
+        "nutrition-carbs": "hsl(var(--nutrition-carbs))",
+        "nutrition-fat": "hsl(var(--nutrition-fat))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

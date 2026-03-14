@@ -5,13 +5,16 @@ interface MacroRingProps {
   unit: string;
   color: string;
   size?: number;
+  showTarget?: boolean;
 }
 
-export function MacroRing({ label, current, target, unit, color, size = 80 }: MacroRingProps) {
+export function MacroRing({ label, current, target, unit, color, size = 80, showTarget = true }: MacroRingProps) {
   const percentage = Math.min((current / target) * 100, 100);
+  const isOver = current > target;
   const radius = (size - 8) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
+  const displayColor = isOver ? 'hsl(0 62.8% 50%)' : color;
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -30,7 +33,7 @@ export function MacroRing({ label, current, target, unit, color, size = 80 }: Ma
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke={color}
+            stroke={displayColor}
             strokeWidth={4}
             strokeLinecap="round"
             strokeDasharray={circumference}
@@ -40,14 +43,12 @@ export function MacroRing({ label, current, target, unit, color, size = 80 }: Ma
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="font-mono text-sm font-bold">{current}</span>
+          {showTarget && (
+            <span className="text-[9px] text-muted-foreground">/ {target}{unit}</span>
+          )}
         </div>
       </div>
-      <span className="text-[11px] text-muted-foreground">
-        {label}
-      </span>
-      <span className="text-[10px] text-muted-foreground">
-        / {target}{unit}
-      </span>
+      <span className="text-[11px] text-muted-foreground">{label}</span>
     </div>
   );
 }
