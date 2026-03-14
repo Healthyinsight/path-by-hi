@@ -12,14 +12,27 @@ const WORDS = [
 ];
 
 const DELAYS = [400, 400, 400, 500, 500, 700, 900];
+const RESTART_DELAY = 30_000;
 
-export function AnimatedTitle() {
+interface AnimatedTitleProps {
+  /** When true, the animation stops restarting (user has engaged) */
+  idle?: boolean;
+}
+
+export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<'visible' | 'out' | 'in'>('visible');
   const [settled, setSettled] = useState(false);
-  const [showEmoji, setShowEmoji] = useState(true);
   const [glowing, setGlowing] = useState(false);
   const scheduleRef = useRef<ReturnType<typeof setTimeout>>();
+  const restartRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const resetAnimation = useCallback(() => {
+    setIndex(0);
+    setPhase('visible');
+    setSettled(false);
+    setGlowing(false);
+  }, []);
 
   const advance = useCallback(() => {
     if (settled) return;
@@ -30,7 +43,6 @@ export function AnimatedTitle() {
         if (next >= WORDS.length - 1) {
           setSettled(true);
           setGlowing(true);
-          setTimeout(() => setShowEmoji(false), 1000);
           setTimeout(() => setGlowing(false), 3000);
           return WORDS.length - 1;
         }
@@ -41,12 +53,20 @@ export function AnimatedTitle() {
     }, 120);
   }, [settled]);
 
+  // Drive the word rotation
   useEffect(() => {
     if (settled || phase !== 'visible') return;
     if (index >= WORDS.length - 1) return;
     scheduleRef.current = setTimeout(advance, DELAYS[index] ?? 400);
     return () => clearTimeout(scheduleRef.current);
   }, [index, phase, settled, advance]);
+
+  // Restart after 30s if idle (no email input)
+  useEffect(() => {
+    if (!settled || !idle) return;
+    restartRef.current = setTimeout(resetAnimation, RESTART_DELAY);
+    return () => clearTimeout(restartRef.current);
+  }, [settled, idle, resetAnimation]);
 
   const { word, emoji, color } = WORDS[index];
   const rotating = phase === 'out' || phase === 'in';
@@ -74,7 +94,7 @@ export function AnimatedTitle() {
             textShadow: glowing ? '0 0 10px rgba(80,149,172,0.3)' : 'none',
           }}
         >
-          {showEmoji && <span style={{ marginRight: '0.2em' }}>{emoji}</span>}
+          <span style={{ marginRight: '0.2em' }}>{emoji}</span>
           {word}
         </span>
         {' '}
