@@ -37,13 +37,18 @@ export default function SettingsPage() {
   const save = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase.from('users').update({
-      name: profile.name, current_weight: Number(profile.current_weight),
-      height_cm: Number(profile.height_cm), body_fat_pct: Number(profile.body_fat_pct),
-      ftp_watts: Number(profile.ftp_watts), run_threshold_pace: profile.run_threshold_pace,
-      vo2max_estimate: Number(profile.vo2max_estimate), training_phase: profile.training_phase,
-    }).eq('id', user.id);
-    if (error) toast.error('Kunde inte spara');
+    const [profileRes, goalRes] = await Promise.all([
+      supabase.from('users').update({
+        name: profile.name, current_weight: Number(profile.current_weight),
+        height_cm: Number(profile.height_cm), body_fat_pct: Number(profile.body_fat_pct),
+        ftp_watts: Number(profile.ftp_watts), run_threshold_pace: profile.run_threshold_pace,
+        vo2max_estimate: Number(profile.vo2max_estimate), training_phase: profile.training_phase,
+      }).eq('id', user.id),
+      supabase.from('user_goals').upsert({
+        user_id: user.id, goal_name: goal.goal_name, goal_date: goal.goal_date, goal_emoji: goal.goal_emoji,
+      }, { onConflict: 'user_id' }),
+    ]);
+    if (profileRes.error || goalRes.error) toast.error('Kunde inte spara');
     else toast.success('Inställningar sparade!');
     setSaving(false);
   };
