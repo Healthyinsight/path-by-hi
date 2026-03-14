@@ -57,7 +57,7 @@ export function RaceReadinessGauge({ breakdown, hasEnoughData }: Props) {
             <div key={s.label} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">{s.label}</span>
-                <span className="font-mono font-medium">{s.value}%</span>
+                <span className="font-data font-medium" style={{ fontFeatureSettings: "'tnum' 1" }}>{s.value}%</span>
               </div>
               <Progress value={s.value} className="h-1.5" />
             </div>

@@ -225,7 +225,7 @@ export default function Nutrition() {
               <div key={i} className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-3">
                 <div>
                   <p className="text-sm font-medium">{s.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{s.kcal} kcal · {s.protein}p · {s.carbs}c · {s.fat}f</p>
+                  <p className="font-data text-[10px] text-muted-foreground" style={{ fontFeatureSettings: "'tnum' 1" }}>{s.kcal} kcal · {s.protein}p · {s.carbs}c · {s.fat}f</p>
                 </div>
                 <button onClick={() => prefillSuggestion(s)} className="touch-target flex items-center justify-center rounded-lg bg-primary/10 p-2 text-primary transition-colors duration-200 hover:bg-primary/20">
                   <Plus className="h-4 w-4" />

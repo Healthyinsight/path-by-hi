@@ -26,9 +26,9 @@ export function MacroRing({ label, current, target, unit, color, size = 80, show
             className="transition-all duration-700" />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-mono text-sm font-bold text-foreground">{current}</span>
+          <span className="font-data text-sm font-bold text-foreground" style={{ fontFeatureSettings: "'tnum' 1" }}>{current}</span>
           {showTarget && (
-            <span className="text-[9px] text-muted-foreground">/ {target}{unit}</span>
+            <span className="font-data text-[9px] text-muted-foreground" style={{ fontFeatureSettings: "'tnum' 1" }}>/ {target}{unit}</span>
           )}
         </div>
       </div>

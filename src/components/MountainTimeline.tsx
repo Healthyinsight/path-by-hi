@@ -137,10 +137,10 @@ export function MountainTimeline({
           <p className="text-[10px] text-muted-foreground">dagar kvar</p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-muted-foreground">{rotatingStat}</p>
+          <p className="font-data text-xs text-muted-foreground">{rotatingStat}</p>
         </div>
         <div className="text-right">
-          <p className="font-mono text-lg font-bold">{completedWorkouts}/{totalWorkouts}</p>
+          <p className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{completedWorkouts}/{totalWorkouts}</p>
           <p className="text-[10px] text-muted-foreground">pass genomförda</p>
         </div>
       </div>

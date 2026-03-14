@@ -35,7 +35,7 @@ export default function Progress() {
         {stats.map(({ label, value, unit, icon: Icon }) => (
           <div key={label} className="card-athletic flex flex-col items-center gap-2 py-6">
             <Icon className="h-5 w-5 text-muted-foreground" />
-            <span className="stat-number">{value ?? '–'}</span>
+            <span className="font-data text-2xl font-bold tracking-tight" style={{ fontFeatureSettings: "'tnum' 1" }}>{value ?? '–'}</span>
             <span className="text-xs text-muted-foreground">
               {label} {unit && `(${unit})`}
             </span>

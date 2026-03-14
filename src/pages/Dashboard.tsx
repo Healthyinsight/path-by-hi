@@ -334,11 +334,11 @@ export default function Dashboard() {
         <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Recomp-mål</p>
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-mono text-lg font-bold">{currentWeight} kg</p>
+            <p className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{currentWeight} kg</p>
             <p className="text-xs text-muted-foreground">Mål: 78–80 kg @ 15% bf</p>
           </div>
           <div className="text-right">
-            <p className="font-mono text-sm font-bold text-muted-foreground">
+            <p className="font-data text-sm font-bold text-muted-foreground" style={{ fontFeatureSettings: "'tnum' 1" }}>
               {weekDeficit > 0 ? '+' : ''}{weekDeficit} kcal
             </p>
             <p className="text-[10px] text-muted-foreground">veckobalans</p>

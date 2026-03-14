@@ -77,7 +77,13 @@
 
 @layer utilities {
   .stat-number {
-    @apply font-mono text-2xl font-bold tracking-tight;
+    @apply font-data text-2xl font-bold tracking-tight;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  .font-data-num {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'tnum' 1;
   }
 
   .card-athletic {
