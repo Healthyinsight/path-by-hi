@@ -64,7 +64,7 @@ export default function Login() {
         ) : (
           <form
             onSubmit={handleMagicLink}
-            className="rounded-2xl border border-border bg-card p-6 md:px-12 md:py-10 shadow-lg space-y-5"
+            className="w-full max-w-[480px] rounded-2xl border border-border bg-card p-6 md:px-12 md:py-10 shadow-lg space-y-5"
           >
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">Din e-postadress</Label>
