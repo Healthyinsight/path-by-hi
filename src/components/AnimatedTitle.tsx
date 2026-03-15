@@ -24,12 +24,10 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
   const [settled, setSettled] = useState(false);
   const [glowing, setGlowing] = useState(false);
 
-  // Cycle through words
   useEffect(() => {
     if (index >= WORDS.length - 1) {
       setSettled(true);
       setGlowing(true);
-      // Stop glow after 2s
       const glowTimer = setTimeout(() => setGlowing(false), 2000);
       return () => { clearTimeout(glowTimer); };
     }
@@ -42,7 +40,6 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
     setSettled(false);
   }, []);
 
-  // Restart after 30s if idle
   useEffect(() => {
     if (!settled || !idle) return;
     const restartRef = setTimeout(resetAnimation, RESTART_DELAY);
@@ -53,7 +50,6 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
 
   return (
     <div className="flex flex-col items-center w-full">
-      {/* Two-line stacked layout */}
       <div
         style={{
           display: 'flex',
@@ -96,25 +92,35 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
 
         {/* Static "Path Tracker" */}
         <span
-          className="text-[3rem] sm:text-[4rem] text-foreground"
+          className="text-[3rem] sm:text-[4rem]"
           style={{
             fontFamily: "'Merriweather', serif",
             fontWeight: 700,
             letterSpacing: '0.02em',
             textAlign: 'center',
             whiteSpace: 'nowrap',
+            color: '#1A2B32',
           }}
         >
           Path Tracker
         </span>
       </div>
 
-      <p
-        className="mt-8 text-muted-foreground"
-        style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '0.9rem' }}
+      {/* Powered by badge */}
+      <div
+        className="mt-8"
+        style={{
+          fontFamily: "'Merriweather Sans', sans-serif",
+          fontSize: '11px',
+          letterSpacing: '0.5px',
+          color: '#8E9BA3',
+          border: '1px solid rgba(0,0,0,0.08)',
+          borderRadius: '20px',
+          padding: '4px 12px',
+        }}
       >
         Powered by Healthy Insight
-      </p>
+      </div>
     </div>
   );
 }

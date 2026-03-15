@@ -1,13 +1,16 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import confetti from 'canvas-confetti';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { BottomNav } from '@/components/BottomNav';
 import { RecoveryRing } from '@/components/RecoveryRing';
+import { RaceCountdownArc } from '@/components/RaceCountdownArc';
 import { InsightCard } from '@/components/InsightCard';
 import { getTodayInsights } from '@/data/mockInsights';
+import { getTodayRecovery, getStreakMessage } from '@/data/mockRecoveryData';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Check, Calendar, ChefHat, ClipboardList } from 'lucide-react';
@@ -42,11 +45,8 @@ function getGreeting(name: string): { text: string; emoji: string } {
 
 function getWorkoutMotivation(sport?: string, type?: string): string {
   if (!sport && !type) return 'Planera din dag – varje steg räknas 🛤️';
-  if (type === 'rest' || type === 'swim') {
-    if (sport === 'swim') return 'Simdag – låt vattnet bära dig 🏊';
-  }
-  if (sport === 'run') return 'Löpdag – dags att bygga basen 🏃';
   if (sport === 'swim') return 'Simdag – låt vattnet bära dig 🏊';
+  if (sport === 'run') return 'Löpdag – dags att bygga basen 🏃';
   if (sport === 'bike') return 'Cykeldag – känn vinden 🚴';
   if (type === 'strength') return 'Styrkedag – bli starkare än igår 💪';
   if (type === 'rest') return 'Återhämtningsdag – din kropp tackar dig 🙏';
@@ -67,16 +67,13 @@ function getUserFirstName(user: any, profile: any): string {
 const sportLabels: Record<string, string> = {
   bike: 'Cykling', run: 'Löpning', swim: 'Simning', strength: 'Styrka',
 };
-
 const subtypeLabels: Record<string, string> = {
   long_distance: 'Långdistans', vo2max: 'VO2max', upper: 'Överkropp', lower: 'Underkropp',
   long_swim: 'Långsim', technique_intervals: 'Teknik & Intervaller',
 };
-
 const workoutIcons: Record<string, string> = {
   bike: '🚴', run: '🏃', swim: '🏊', strength: '💪',
 };
-
 const nutritionTips: Record<string, string> = {
   strength: '💪 Styrkedag = höj proteinet. Sikta på 175g+.',
   long_distance: '🚴 Långpass = fuel first. Kolhydrater är din vän idag.',
@@ -88,14 +85,26 @@ const nutritionTips: Record<string, string> = {
 
 const DEFAULT_NUTRITION = { kcal: 2400, protein: 170, carbs: 270, fat: 72 };
 
-/* ---- stagger animation wrapper ---- */
-const stagger = {
-  container: { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } },
-  item: {
-    hidden: { opacity: 0, y: 16 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as const } },
+function fireConfetti() {
+  const colors = ['#5095AC', '#839F8D', '#D4E67C', '#FFFFFF'];
+  confetti({
+    particleCount: 80,
+    spread: 60,
+    origin: { y: 0.7 },
+    colors,
+    disableForReducedMotion: true,
+  });
+}
+
+/* ---- stagger animation ---- */
+const cardVariant = (i: number) => ({
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.15, duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
   },
-};
+});
 
 /* ---- component ---- */
 export default function TodayView() {
@@ -110,16 +119,13 @@ export default function TodayView() {
   const [loadingNutrition, setLoadingNutrition] = useState(true);
 
   const insights = useMemo(() => getTodayInsights(), []);
+  const recovery = useMemo(() => getTodayRecovery(), []);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
       const { data } = await supabase
-        .from('training_schedule')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', today)
-        .maybeSingle();
+        .from('training_schedule').select('*').eq('user_id', user.id).eq('date', today).maybeSingle();
       setWorkout(data);
       setLoadingWorkout(false);
     })();
@@ -129,11 +135,7 @@ export default function TodayView() {
     if (!user) return;
     (async () => {
       const { data } = await supabase
-        .from('nutrition_plan')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', today)
-        .maybeSingle();
+        .from('nutrition_plan').select('*').eq('user_id', user.id).eq('date', today).maybeSingle();
       setNutrition(data);
       setLoadingNutrition(false);
     })();
@@ -142,12 +144,14 @@ export default function TodayView() {
   const markCompleted = async () => {
     if (!workout) return;
     const { error } = await supabase
-      .from('training_schedule')
-      .update({ completed: true })
-      .eq('id', workout.id);
-    if (error) toast.error('Kunde inte uppdatera');
-    else {
-      toast.success('Pass genomfört! 💪');
+      .from('training_schedule').update({ completed: true }).eq('id', workout.id);
+    if (error) {
+      toast.error('Kunde inte uppdatera');
+    } else {
+      fireConfetti();
+      const streak = recovery.currentStreak + 1;
+      const milestoneMsg = getStreakMessage(streak);
+      toast.success(milestoneMsg || `🎉 Bra jobbat! ${streak} dagar i rad!`);
       setWorkout({ ...workout, completed: true });
     }
   };
@@ -161,18 +165,12 @@ export default function TodayView() {
     else {
       toast.success('4-veckors schema genererat! 🎉');
       const { data } = await supabase
-        .from('training_schedule')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', today)
-        .maybeSingle();
+        .from('training_schedule').select('*').eq('user_id', user.id).eq('date', today).maybeSingle();
       setWorkout(data);
     }
   };
 
-  const targets = workout
-    ? getNutritionTargets(workout.planned_type, workout.planned_subtype)
-    : null;
+  const targets = workout ? getNutritionTargets(workout.planned_type, workout.planned_subtype) : null;
   const nut = nutrition || null;
   const nutTargets = {
     kcal: nut?.target_kcal ?? targets?.kcal ?? DEFAULT_NUTRITION.kcal,
@@ -181,10 +179,8 @@ export default function TodayView() {
     fat: nut?.target_fat ?? targets?.fat ?? DEFAULT_NUTRITION.fat,
   };
   const nutActuals = {
-    kcal: nut?.actual_kcal ?? 0,
-    protein: nut?.actual_protein ?? 0,
-    carbs: nut?.actual_carbs ?? 0,
-    fat: nut?.actual_fat ?? 0,
+    kcal: nut?.actual_kcal ?? 0, protein: nut?.actual_protein ?? 0,
+    carbs: nut?.actual_carbs ?? 0, fat: nut?.actual_fat ?? 0,
   };
 
   const tipKey = workout?.planned_subtype || workout?.planned_type || 'rest';
@@ -192,68 +188,80 @@ export default function TodayView() {
 
   const { currentWeek, totalWeeks } = weeksProgress();
   const daysLeft = daysUntilRace();
-
   const firstName = getUserFirstName(user, profile);
   const greeting = getGreeting(firstName);
-  const motivation = getWorkoutMotivation(
-    workout?.planned_sport,
-    workout?.planned_type
-  );
+  const motivation = getWorkoutMotivation(workout?.planned_sport, workout?.planned_type);
   const swedishDate = new Date().toLocaleDateString('sv-SE', {
     weekday: 'long', day: 'numeric', month: 'long',
   });
 
   return (
-    <div className="app-container pt-4">
-      <motion.div
-        variants={stagger.container}
-        initial="hidden"
-        animate="visible"
-        className="space-y-4"
-      >
-        {/* A. Personal Greeting Header */}
-        <motion.section variants={stagger.item} className="space-y-1 mb-2">
-          <h1 className="text-xl tracking-tight">
-            {greeting.text} {greeting.emoji}
-          </h1>
-          <p className="text-sm text-muted-foreground capitalize">{swedishDate}</p>
-          <p className="text-xs text-muted-foreground italic">{motivation}</p>
+    <div className="bg-today">
+      <div className="app-container pt-4">
+        {/* A. Greeting + Streak */}
+        <motion.section
+          variants={cardVariant(0)}
+          initial="hidden"
+          animate="visible"
+          className="space-y-1 mb-5"
+        >
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl tracking-tight" style={{ color: '#1A2B32' }}>
+              {greeting.text} {greeting.emoji}
+            </h1>
+            {recovery.currentStreak > 0 && (
+              <span className="streak-pill">🔥 {recovery.currentStreak}</span>
+            )}
+          </div>
+          <p className="text-sm capitalize" style={{ color: '#6B7B84', fontFamily: "'Merriweather Sans', sans-serif" }}>
+            {swedishDate}
+          </p>
+          <p className="text-xs italic" style={{ color: '#6B7B84', fontFamily: "'Merriweather Sans', sans-serif" }}>
+            {motivation}
+          </p>
           <div className="flex items-center gap-2 pt-1">
-            <span className="text-[11px] text-muted-foreground font-data-num">
-              Vecka {currentWeek}/{totalWeeks} → {profile?.goal_name || 'Ironman 70.3'}
-            </span>
-            <span className="text-[11px] text-muted-foreground font-data-num">
-              · {daysLeft} dagar kvar
+            <span className="text-[11px] font-data-num" style={{ color: '#8E9BA3' }}>
+              Vecka {currentWeek}/{totalWeeks} → {profile?.goal_name || 'Ironman 70.3'} · {daysLeft} dagar kvar
             </span>
           </div>
         </motion.section>
 
         {/* B. Recovery Ring */}
-        <motion.section variants={stagger.item}>
+        <motion.section variants={cardVariant(1)} initial="hidden" animate="visible" className="mb-4">
           <RecoveryRing />
         </motion.section>
 
-        {/* C. Today's Workout */}
-        <motion.section variants={stagger.item}>
+        {/* C. Race Countdown Arc */}
+        <motion.section variants={cardVariant(2)} initial="hidden" animate="visible" className="mb-4">
+          <RaceCountdownArc
+            currentWeek={currentWeek}
+            totalWeeks={totalWeeks}
+            daysLeft={daysLeft}
+            goalName={profile?.goal_name || 'Ironman 70.3 Jönköping'}
+          />
+        </motion.section>
+
+        {/* D. Workout Card */}
+        <motion.section variants={cardVariant(3)} initial="hidden" animate="visible" className="mb-4">
           {loadingWorkout ? (
-            <div className="card-athletic animate-pulse h-28" />
+            <div className="card-glass animate-pulse h-28" />
           ) : workout ? (
-            <div className="card-athletic space-y-3">
+            <div className={`card-glass space-y-3 ${workout.completed ? 'opacity-90' : ''}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">{workoutIcons[workout.planned_sport] || '🏋️'}</span>
                   <div>
-                    <p className="font-bold text-sm">
+                    <p className="font-bold text-sm" style={{ color: '#1A2B32' }}>
                       {sportLabels[workout.planned_sport] || workout.planned_type}
                       {' – '}
                       {subtypeLabels[workout.planned_subtype] || workout.planned_subtype}
                     </p>
-                    <p className="text-xs text-muted-foreground capitalize">{workout.planned_type}</p>
+                    <p className="text-xs capitalize" style={{ color: '#6B7B84' }}>{workout.planned_type}</p>
                   </div>
                 </div>
                 {workout.completed ? (
                   <span className="flex items-center gap-1 rounded-full bg-rest/10 px-3 py-1 text-xs font-medium text-rest">
-                    <Check className="h-3 w-3" /> Klart
+                    <Check className="h-3 w-3" /> ✅ Klart
                   </span>
                 ) : (
                   <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -267,16 +275,16 @@ export default function TodayView() {
                   {workout.planned_type === 'strength' ? (
                     <div className="space-y-1.5">
                       {workout.planned_details.split('\n').slice(0, 3).map((line: string, i: number) => (
-                        <p key={i} className="text-xs leading-relaxed">• {line}</p>
+                        <p key={i} className="text-xs leading-relaxed" style={{ color: '#3D4F58' }}>• {line}</p>
                       ))}
                       {workout.planned_details.split('\n').length > 3 && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs" style={{ color: '#8E9BA3' }}>
                           +{workout.planned_details.split('\n').length - 3} fler övningar
                         </p>
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs leading-relaxed">{workout.planned_details}</p>
+                    <p className="text-xs leading-relaxed" style={{ color: '#3D4F58' }}>{workout.planned_details}</p>
                   )}
                 </div>
               )}
@@ -287,20 +295,15 @@ export default function TodayView() {
                     <Check className="mr-1.5 h-4 w-4" /> Markera som klart
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="touch-target"
-                  onClick={() => navigate('/schedule')}
-                >
+                <Button variant="outline" size="sm" className="touch-target" onClick={() => navigate('/schedule')}>
                   Ändra plan
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="card-athletic flex flex-col items-center gap-3 py-6">
+            <div className="card-glass flex flex-col items-center gap-3 py-6">
               <span className="text-3xl">📋</span>
-              <p className="text-sm text-muted-foreground">Inget pass planerat idag</p>
+              <p className="text-sm" style={{ color: '#6B7B84' }}>Inget pass planerat idag</p>
               <Button size="sm" onClick={generateNewSchedule} className="touch-target">
                 Generera schema
               </Button>
@@ -308,16 +311,15 @@ export default function TodayView() {
           )}
         </motion.section>
 
-        {/* D. Today's Nutrition */}
-        <motion.section variants={stagger.item}>
+        {/* E. Nutrition */}
+        <motion.section variants={cardVariant(4)} initial="hidden" animate="visible" className="mb-4">
           {loadingNutrition ? (
-            <div className="card-athletic animate-pulse h-28" />
+            <div className="card-glass animate-pulse h-28" />
           ) : (
-            <div className="card-athletic space-y-3">
-              <h3 className="text-sm font-bold flex items-center gap-2">
+            <div className="card-glass space-y-3">
+              <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: '#1A2B32' }}>
                 🍽️ Dagens kost
               </h3>
-
               <div className="space-y-2">
                 {([
                   { label: 'Kalorier', actual: nutActuals.kcal, target: nutTargets.kcal, unit: 'kcal' },
@@ -327,8 +329,8 @@ export default function TodayView() {
                 ] as const).map((macro) => (
                   <div key={macro.label} className="space-y-0.5">
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">{macro.label}</span>
-                      <span className="font-data-num">
+                      <span style={{ color: '#6B7B84' }}>{macro.label}</span>
+                      <span className="font-data-num" style={{ color: '#3D4F58' }}>
                         {macro.actual}/{macro.target}{macro.unit}
                       </span>
                     </div>
@@ -339,54 +341,38 @@ export default function TodayView() {
                   </div>
                 ))}
               </div>
-
               <div className="tip-callout">
-                <p className="text-xs">{nutritionTip}</p>
+                <p className="text-xs" style={{ color: '#3D4F58' }}>{nutritionTip}</p>
               </div>
             </div>
           )}
         </motion.section>
 
-        {/* E. Insights */}
-        <motion.section variants={stagger.item} className="space-y-3">
-          <h3 className="text-sm font-bold">💡 Insikter</h3>
+        {/* F. Insights */}
+        <motion.section variants={cardVariant(5)} initial="hidden" animate="visible" className="mb-4 space-y-3">
+          <h3 className="text-sm font-bold" style={{ color: '#1A2B32' }}>💡 Insikter</h3>
           {insights.map((insight) => (
             <InsightCard key={insight.id} insight={insight} />
           ))}
         </motion.section>
 
-        {/* F. Quick Actions */}
-        <motion.section variants={stagger.item} className="pb-2">
+        {/* G. Quick Actions */}
+        <motion.section variants={cardVariant(6)} initial="hidden" animate="visible" className="pb-2">
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 touch-target text-xs"
-              onClick={() => navigate('/schedule')}
-            >
+            <Button variant="outline" size="sm" className="flex-1 touch-target text-xs" onClick={() => navigate('/schedule')}>
               <ClipboardList className="mr-1.5 h-4 w-4" /> Logga pass
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 touch-target text-xs"
-              onClick={() => toast.info('Måltidsloggning kommer snart!')}
-            >
+            <Button variant="outline" size="sm" className="flex-1 touch-target text-xs" onClick={() => toast.info('Måltidsloggning kommer snart!')}>
               <ChefHat className="mr-1.5 h-4 w-4" /> Logga måltid
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 touch-target text-xs"
-              onClick={() => navigate('/schedule')}
-            >
+            <Button variant="outline" size="sm" className="flex-1 touch-target text-xs" onClick={() => navigate('/schedule')}>
               <Calendar className="mr-1.5 h-4 w-4" /> Se veckan
             </Button>
           </div>
         </motion.section>
-      </motion.div>
 
-      <BottomNav />
+        <BottomNav />
+      </div>
     </div>
   );
 }
