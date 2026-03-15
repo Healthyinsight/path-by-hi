@@ -78,6 +78,27 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState<'left' | 'right'>('left');
   const [saving, setSaving] = useState(false);
+  const [prefilled, setPrefilled] = useState(false);
+
+  // Pre-fill form if profile already exists
+  useEffect(() => {
+    if (!user || prefilled) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      if (data) {
+        setState(s => ({
+          ...s,
+          display_name: data.display_name || '',
+          archetype: data.archetype || '',
+        }));
+      }
+      setPrefilled(true);
+    })();
+  }, [user, prefilled]);
 
   const set = useCallback(<K extends keyof QuizState>(key: K, val: QuizState[K]) => {
     setState(s => ({ ...s, [key]: val }));
