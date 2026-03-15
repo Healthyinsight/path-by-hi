@@ -9,6 +9,7 @@ export interface RecoveryData {
   sleepHours: number;
   hrvMs: number;
   bodyBattery: number;
+  currentStreak: number;
 }
 
 const RECOVERY_STATES: RecoveryData[] = [
@@ -21,6 +22,7 @@ const RECOVERY_STATES: RecoveryData[] = [
     sleepHours: 7.2,
     hrvMs: 58,
     bodyBattery: 72,
+    currentStreak: 5,
   },
   {
     status: 'yellow',
@@ -31,6 +33,7 @@ const RECOVERY_STATES: RecoveryData[] = [
     sleepHours: 6.4,
     hrvMs: 42,
     bodyBattery: 55,
+    currentStreak: 3,
   },
   {
     status: 'red',
@@ -41,8 +44,17 @@ const RECOVERY_STATES: RecoveryData[] = [
     sleepHours: 5.1,
     hrvMs: 28,
     bodyBattery: 32,
+    currentStreak: 1,
   },
 ];
+
+// MOCK: streak milestone messages
+export function getStreakMessage(streak: number): string | null {
+  if (streak >= 30) return '🏆 EN MÅNAD! Legend.';
+  if (streak >= 14) return '🔥🔥 Två veckor non-stop! Du är unstoppable!';
+  if (streak >= 7) return '🌟 En hel vecka! Otroligt!';
+  return null;
+}
 
 // MOCK: Returns a deterministic recovery state based on day of month
 export function getTodayRecovery(): RecoveryData {
