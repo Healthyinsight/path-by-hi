@@ -217,13 +217,50 @@ export default function TodayView() {
             {motivation}
           </p>
         </motion.section>
+        
+                {/* 1. Insights */}
+        <motion.section variants={cardVariant(5)} initial="hidden" animate="visible" className="mb-4 space-y-3">
+          <h3 style={{ fontFamily: "'Merriweather', serif", fontSize: '16px', fontWeight: 600, color: '#1A2B32' }}>
+            💡 Insikter
+          </h3>
+          {loadingInsights ? (
+            <>
+              <div className="card-glass animate-pulse h-24" />
+              <div className="card-glass animate-pulse h-20" />
+            </>
+          ) : insights.length === 0 ? (
+            <div className="card-glass" style={{ borderLeft: '3px solid #839F8D', background: 'rgba(131, 159, 141, 0.05)' }}>
+              <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '14px', color: '#3D4F58' }}>
+                ✅ Allt ser bra ut! Fortsätt fokusera på ditt mål.
+              </p>
+            </div>
+          ) : (
+            <>
+              {(showAllInsights ? insights.slice(0, 5) : insights.slice(0, 2)).map((rule, i) => (
+                <InsightCard key={rule.id} rule={rule} index={i} />
+              ))}
+              {insights.length > 2 && !showAllInsights && (
+                <button
+                  onClick={() => setShowAllInsights(true)}
+                  style={{
+                    background: 'none', border: 'none', padding: '6px 0',
+                    fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px',
+                    fontWeight: 600, color: '#5095AC', cursor: 'pointer',
+                  }}
+                >
+                  Visa fler insikter →
+                </button>
+              )}
+            </>
+          )}
+        </motion.section>
 
-        {/* 1. Recovery Ring */}
+        {/* 2. Recovery Ring */}
         <motion.section variants={cardVariant(1)} initial="hidden" animate="visible" className="mb-4">
           <RecoveryRing />
         </motion.section>
 
-        {/* 2. Race Countdown */}
+        {/* 3. Race Countdown */}
         <motion.section variants={cardVariant(2)} initial="hidden" animate="visible" className="mb-4">
           <RaceCountdownArc
             currentWeek={currentWeek}
@@ -233,7 +270,7 @@ export default function TodayView() {
           />
         </motion.section>
 
-        {/* 3. Workout Card */}
+        {/* 4. Workout Card */}
         <motion.section variants={cardVariant(3)} initial="hidden" animate="visible" className="mb-4">
           {loadingWorkout ? (
             <div className="card-glass animate-pulse h-28" />
@@ -336,7 +373,7 @@ export default function TodayView() {
           )}
         </motion.section>
 
-        {/* 4. Nutrition */}
+        {/* 5. Nutrition */}
         <motion.section variants={cardVariant(4)} initial="hidden" animate="visible" className="mb-4">
           {loadingNutrition ? (
             <div className="card-glass animate-pulse h-28" />
@@ -374,43 +411,6 @@ export default function TodayView() {
                 </p>
               </div>
             </div>
-          )}
-        </motion.section>
-
-        {/* 5. Insights */}
-        <motion.section variants={cardVariant(5)} initial="hidden" animate="visible" className="mb-4 space-y-3">
-          <h3 style={{ fontFamily: "'Merriweather', serif", fontSize: '16px', fontWeight: 600, color: '#1A2B32' }}>
-            💡 Insikter
-          </h3>
-          {loadingInsights ? (
-            <>
-              <div className="card-glass animate-pulse h-24" />
-              <div className="card-glass animate-pulse h-20" />
-            </>
-          ) : insights.length === 0 ? (
-            <div className="card-glass" style={{ borderLeft: '3px solid #839F8D', background: 'rgba(131, 159, 141, 0.05)' }}>
-              <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '14px', color: '#3D4F58' }}>
-                ✅ Allt ser bra ut! Fortsätt fokusera på ditt mål.
-              </p>
-            </div>
-          ) : (
-            <>
-              {(showAllInsights ? insights.slice(0, 5) : insights.slice(0, 2)).map((rule, i) => (
-                <InsightCard key={rule.id} rule={rule} index={i} />
-              ))}
-              {insights.length > 2 && !showAllInsights && (
-                <button
-                  onClick={() => setShowAllInsights(true)}
-                  style={{
-                    background: 'none', border: 'none', padding: '6px 0',
-                    fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px',
-                    fontWeight: 600, color: '#5095AC', cursor: 'pointer',
-                  }}
-                >
-                  Visa fler insikter →
-                </button>
-              )}
-            </>
           )}
         </motion.section>
 
