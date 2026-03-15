@@ -118,7 +118,7 @@ export default function TodayView() {
 
   const { insights, loading: loadingInsights } = useInsights();
   const [showAllInsights, setShowAllInsights] = useState(false);
-
+  const recovery = useMemo(() => getTodayRecovery(), []);
   useEffect(() => {
     if (!user) return;
     (async () => {
