@@ -382,9 +382,36 @@ export default function TodayView() {
           <h3 style={{ fontFamily: "'Merriweather', serif", fontSize: '16px', fontWeight: 600, color: '#1A2B32' }}>
             💡 Insikter
           </h3>
-          {insights.map((insight) => (
-            <InsightCard key={insight.id} insight={insight} />
-          ))}
+          {loadingInsights ? (
+            <>
+              <div className="card-glass animate-pulse h-24" />
+              <div className="card-glass animate-pulse h-20" />
+            </>
+          ) : insights.length === 0 ? (
+            <div className="card-glass" style={{ borderLeft: '3px solid #839F8D', background: 'rgba(131, 159, 141, 0.05)' }}>
+              <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '14px', color: '#3D4F58' }}>
+                ✅ Allt ser bra ut! Fortsätt fokusera på ditt mål.
+              </p>
+            </div>
+          ) : (
+            <>
+              {(showAllInsights ? insights.slice(0, 5) : insights.slice(0, 2)).map((rule, i) => (
+                <InsightCard key={rule.id} rule={rule} index={i} />
+              ))}
+              {insights.length > 2 && !showAllInsights && (
+                <button
+                  onClick={() => setShowAllInsights(true)}
+                  style={{
+                    background: 'none', border: 'none', padding: '6px 0',
+                    fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px',
+                    fontWeight: 600, color: '#5095AC', cursor: 'pointer',
+                  }}
+                >
+                  Visa fler insikter →
+                </button>
+              )}
+            </>
+          )}
         </motion.section>
 
         {/* 6. Quick Actions */}
