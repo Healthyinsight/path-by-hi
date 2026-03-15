@@ -5,12 +5,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
 
   useEffect(() => {
+    // CRITICAL: Do NOT check onboarding while auth is still loading
+    if (authLoading) return;
     if (!user) { setCheckingOnboarding(false); return; }
+
     (supabase as any)
       .from('user_profiles')
       .select('onboarding_completed')
@@ -20,9 +23,10 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         setOnboardingCompleted(data?.onboarding_completed ?? false);
         setCheckingOnboarding(false);
       });
-  }, [user]);
+  }, [user, authLoading]);
 
-  if (loading || checkingOnboarding) {
+  // Show spinner while auth OR onboarding check is in progress
+  if (authLoading || (user && checkingOnboarding)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

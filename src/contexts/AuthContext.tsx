@@ -22,16 +22,21 @@ export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setLoading(false);
+    // Set up auth state listener FIRST (before getSession)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      // Do NOT set loading=false here on first call; getSession handles that
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    // Then get initial session
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
       setLoading(false);
     });
 
@@ -51,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, signInWithMagicLink, signOut }}>
+    <AuthContext.Provider value={{ session, user, loading, signInWithMagicLink, signOut }}>
       {children}
     </AuthContext.Provider>
   );
