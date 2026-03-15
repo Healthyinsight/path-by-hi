@@ -9,7 +9,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { RecoveryRing } from '@/components/RecoveryRing';
 import { RaceCountdownArc } from '@/components/RaceCountdownArc';
 import { InsightCard } from '@/components/InsightCard';
-import { getTodayInsights } from '@/data/mockInsights';
+import { useInsights } from '@/hooks/useInsights';
 import { getTodayRecovery, getStreakMessage } from '@/data/mockRecoveryData';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
