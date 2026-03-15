@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,6 +78,27 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState<'left' | 'right'>('left');
   const [saving, setSaving] = useState(false);
+  const [prefilled, setPrefilled] = useState(false);
+
+  // Pre-fill form if profile already exists
+  useEffect(() => {
+    if (!user || prefilled) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      if (data) {
+        setState(s => ({
+          ...s,
+          display_name: data.display_name || '',
+          archetype: data.archetype || '',
+        }));
+      }
+      setPrefilled(true);
+    })();
+  }, [user, prefilled]);
 
   const set = useCallback(<K extends keyof QuizState>(key: K, val: QuizState[K]) => {
     setState(s => ({ ...s, [key]: val }));
@@ -265,20 +286,40 @@ export default function Onboarding() {
   };
 
   const handleFinish = async () => {
-    if (!user) return;
     setSaving(true);
-    const profileData = buildProfileData();
 
-    const { error: profileError } = await (supabase as any).from('user_profiles').insert(profileData);
+    // Always verify auth before saving
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      toast.error('Inte inloggad. Logga in igen.');
+      setSaving(false);
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    const profileData = buildProfileData();
+    // Override user_id from verified auth
+    profileData.user_id = authUser.id;
+
+    const { error: profileError } = await (supabase as any)
+      .from('user_profiles')
+      .upsert({
+        ...profileData,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+
     if (profileError) {
-      toast.error('Kunde inte spara profil');
+      console.error('Profile save error:', profileError);
+      toast.error('Kunde inte spara profilen. Försök igen.');
       setSaving(false);
       return;
     }
 
+    toast.success('Profil sparad!');
+
     // Also save to user_goals for mountain timeline
     await supabase.from('user_goals').upsert({
-      user_id: user.id,
+      user_id: authUser.id,
       goal_name: profileData.goal_name || 'Mitt mål',
       goal_date: profileData.goal_date,
       goal_emoji: profileData.goal_emoji,
@@ -286,7 +327,7 @@ export default function Onboarding() {
     }, { onConflict: 'user_id' });
 
     // Update users table with name
-    await supabase.from('users').update({ name: profileData.display_name }).eq('id', user.id);
+    await supabase.from('users').update({ name: profileData.display_name }).eq('id', authUser.id);
 
     setSaving(false);
     navigate('/', { replace: true });
