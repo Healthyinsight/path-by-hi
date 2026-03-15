@@ -42,7 +42,7 @@ export default function Login() {
       className="flex min-h-screen flex-col items-center justify-center px-4"
       style={{
         background: `
-          radial-gradient(ellipse at 50% 0%, rgba(80, 149, 172, 0.08) 0%, transparent 60%),
+          radial-gradient(ellipse at 50% 30%, rgba(80, 149, 172, 0.06) 0%, transparent 70%),
           linear-gradient(180deg, hsl(195 38% 94%) 0%, hsl(210 20% 98%) 100%)
         `,
       }}
@@ -56,12 +56,13 @@ export default function Login() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 8, duration: 0.8 }}
-            className="mt-3 text-center"
             style={{
               fontFamily: "'Merriweather Sans', sans-serif",
               fontStyle: 'italic',
               fontSize: '14px',
               color: '#6B7B84',
+              marginTop: '12px',
+              textAlign: 'center',
             }}
           >
             Din väg. Dina mål. Dina insikter.
@@ -73,15 +74,24 @@ export default function Login() {
             <div className="card-glass p-6 md:px-12 md:py-10 space-y-4 text-center">
               <CheckCircle className="mx-auto h-12 w-12 text-primary" />
               <div>
-                <p className="text-lg font-semibold text-foreground">Kolla din inkorg!</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Vi har skickat en inloggningslänk till <strong className="text-foreground">{email}</strong>.
+                <p className="text-lg font-semibold" style={{ color: '#1A2B32' }}>Kolla din inkorg!</p>
+                <p className="mt-1 text-sm" style={{ color: '#6B7B84' }}>
+                  Vi har skickat en inloggningslänk till <strong style={{ color: '#1A2B32' }}>{email}</strong>.
                 </p>
               </div>
               <button
                 onClick={handleMagicLink}
                 disabled={cooldown > 0}
-                className="text-sm text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+                style={{
+                  fontFamily: "'Merriweather Sans', sans-serif",
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: cooldown > 0 ? '#8E9BA3' : '#5095AC',
+                  background: 'none',
+                  border: 'none',
+                  cursor: cooldown > 0 ? 'default' : 'pointer',
+                  textDecoration: cooldown > 0 ? 'none' : 'underline',
+                }}
               >
                 {cooldown > 0 ? `Skicka igen (${cooldown}s)` : 'Skicka igen'}
               </button>
@@ -92,7 +102,7 @@ export default function Login() {
               className="card-glass p-6 md:px-12 md:py-10 space-y-5"
             >
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">Din e-postadress</Label>
+                <Label htmlFor="email" className="text-sm font-medium" style={{ color: '#3D4F58' }}>Din e-postadress</Label>
                 <Input
                   id="email"
                   type="email"
@@ -103,7 +113,15 @@ export default function Login() {
                   className="h-[52px] text-base rounded-lg ring-offset-background focus-visible:ring-2 focus-visible:ring-primary"
                 />
               </div>
-              <Button type="submit" className="w-full h-[52px] text-base font-semibold rounded-lg" disabled={loading}>
+              <Button
+                type="submit"
+                className="w-full h-[52px] text-base font-semibold rounded-[10px]"
+                disabled={loading}
+                style={{
+                  fontFamily: "'Merriweather Sans', sans-serif",
+                  fontWeight: 600,
+                }}
+              >
                 {loading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -111,7 +129,14 @@ export default function Login() {
                 )}
                 Skicka inloggningslänk →
               </Button>
-              <p className="flex items-center justify-center gap-1.5 text-center text-[0.85rem] text-muted-foreground">
+              <p
+                className="flex items-center justify-center gap-1.5 text-center"
+                style={{
+                  fontFamily: "'Merriweather Sans', sans-serif",
+                  fontSize: '13px',
+                  color: '#8E9BA3',
+                }}
+              >
                 <Lock className="h-3.5 w-3.5" />
                 Inget lösenord behövs. Vi skickar en säker länk till din email.
               </p>

@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { getTodayRecovery, type RecoveryData } from '@/data/mockRecoveryData';
 
-const RING_SIZE = 200;
-const STROKE_WIDTH = 14;
-const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const RING_SIZE = 220;
+const STROKE = 10;
+const R = 90;
+const CX = RING_SIZE / 2;
+const CY = RING_SIZE / 2;
 
 const gradientColors: Record<RecoveryData['status'], [string, string]> = {
   green: ['#839F8D', '#5095AC'],
@@ -13,20 +14,26 @@ const gradientColors: Record<RecoveryData['status'], [string, string]> = {
   red: ['#E07A5F', '#DC3545'],
 };
 
-const glowColors: Record<RecoveryData['status'], string> = {
-  green: 'rgba(80, 149, 172, 0.25)',
-  yellow: 'rgba(212, 230, 124, 0.25)',
-  red: 'rgba(220, 53, 69, 0.2)',
+const glowShadow: Record<RecoveryData['status'], string> = {
+  green: '0 0 30px rgba(80, 149, 172, 0.3)',
+  yellow: '0 0 30px rgba(212, 230, 124, 0.3)',
+  red: '0 0 30px rgba(224, 122, 95, 0.3)',
+};
+
+const statusEmoji: Record<RecoveryData['status'], string> = {
+  green: '🟢',
+  yellow: '🟡',
+  red: '🔴',
 };
 
 export function RecoveryRing() {
   const recovery = getTodayRecovery();
   const [animatedScore, setAnimatedScore] = useState(0);
   const pct = recovery.score / 100;
-  const offset = CIRCUMFERENCE * (1 - pct);
   const colors = gradientColors[recovery.status];
   const gId = `recovery-grad-${recovery.status}`;
 
+  // Animate the number counting up
   useEffect(() => {
     let frame: number;
     const duration = 1500;
@@ -44,22 +51,23 @@ export function RecoveryRing() {
 
   return (
     <div className="card-glass flex flex-col items-center gap-4 py-6 relative overflow-hidden">
-      {/* Subtle glow behind ring */}
+      {/* Ring with glow */}
       <div
-        className="absolute animate-ring-glow rounded-full blur-3xl"
+        className="relative animate-ring-glow"
         style={{
-          width: RING_SIZE + 40,
-          height: RING_SIZE + 40,
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -55%)',
-          background: glowColors[recovery.status],
+          width: RING_SIZE,
+          height: RING_SIZE,
+          margin: '0 auto',
+          boxShadow: glowShadow[recovery.status],
+          borderRadius: '50%',
         }}
-      />
-
-      {/* SVG Ring */}
-      <div className="relative z-10" style={{ width: RING_SIZE, height: RING_SIZE }}>
-        <svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+      >
+        <svg
+          width={RING_SIZE}
+          height={RING_SIZE}
+          viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+          style={{ transform: 'rotate(-90deg)' }}
+        >
           <defs>
             <linearGradient id={gId} x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor={colors[0]} />
@@ -69,64 +77,81 @@ export function RecoveryRing() {
 
           {/* Background track */}
           <circle
-            cx={RING_SIZE / 2}
-            cy={RING_SIZE / 2}
-            r={RADIUS}
+            cx={CX}
+            cy={CY}
+            r={R}
             fill="none"
-            stroke="hsl(var(--muted))"
-            strokeWidth={STROKE_WIDTH}
-            opacity={0.5}
+            stroke="#E8EDEF"
+            strokeWidth={STROKE}
           />
 
-          {/* Animated progress arc */}
+          {/* Animated progress ring using pathLength */}
           <motion.circle
-            cx={RING_SIZE / 2}
-            cy={RING_SIZE / 2}
-            r={RADIUS}
+            cx={CX}
+            cy={CY}
+            r={R}
             fill="none"
             stroke={`url(#${gId})`}
-            strokeWidth={STROKE_WIDTH}
+            strokeWidth={STROKE}
             strokeLinecap="round"
-            strokeDasharray={CIRCUMFERENCE}
-            initial={{ strokeDashoffset: CIRCUMFERENCE }}
-            animate={{ strokeDashoffset: offset }}
+            pathLength={1}
+            initial={{ strokeDasharray: '1 1', strokeDashoffset: 1 }}
+            animate={{ strokeDashoffset: 1 - pct }}
             transition={{ duration: 1.5, ease: 'easeOut' }}
-            style={{ transformOrigin: 'center', transform: 'rotate(-90deg)' }}
           />
         </svg>
 
-        {/* Center content */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-data text-5xl font-bold tracking-tight" style={{ fontFeatureSettings: "'tnum' 1" }}>
+        {/* Center content – counter-rotate to keep text upright */}
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center"
+          style={{ transform: 'rotate(0deg)' }}
+        >
+          <span
+            style={{
+              fontFamily: "'Inter', system-ui, sans-serif",
+              fontSize: '48px',
+              fontWeight: 700,
+              fontVariantNumeric: 'tabular-nums',
+              color: '#1A2B32',
+            }}
+          >
             {animatedScore}
           </span>
-          <span className="metric-label mt-0.5">Återhämtning</span>
+          <span className="metric-label" style={{ letterSpacing: '1.5px', fontSize: '12px' }}>
+            Återhämtning
+          </span>
         </div>
       </div>
 
-      {/* Status */}
-      <div className="text-center space-y-1 relative z-10">
-        <p className="text-sm font-bold">{recovery.statusLabel}</p>
-        <p className="text-xs text-muted-foreground leading-relaxed max-w-[280px]">{recovery.summary}</p>
+      {/* Metric pills */}
+      <div className="flex gap-2 relative z-10">
+        <span className="metric-pill">Sömn {recovery.sleepHours}h</span>
+        <span className="metric-pill">HRV {recovery.hrvMs}ms</span>
+        <span className="metric-pill">Body Battery {recovery.bodyBattery}</span>
       </div>
 
-      {/* Metrics pills */}
-      <div className="flex gap-3 relative z-10">
-        {[
-          { label: 'Sömn', value: `${recovery.sleepHours}h` },
-          { label: 'HRV', value: `${recovery.hrvMs}ms` },
-          { label: 'Battery', value: `${recovery.bodyBattery}` },
-        ].map((m) => (
-          <div key={m.label} className="flex flex-col items-center gap-0.5 rounded-xl bg-muted/50 px-3 py-1.5">
-            <span className="font-data text-sm font-semibold" style={{ fontFeatureSettings: "'tnum' 1" }}>
-              {m.value}
-            </span>
-            <span className="metric-label text-[9px]">{m.label}</span>
-          </div>
-        ))}
-      </div>
+      {/* Status text */}
+      <p
+        className="text-center relative z-10"
+        style={{
+          fontFamily: "'Merriweather Sans', sans-serif",
+          fontSize: '14px',
+          color: colors[1],
+        }}
+      >
+        {statusEmoji[recovery.status]} {recovery.statusLabel}
+      </p>
 
-      <p className="text-[10px] italic text-muted-foreground relative z-10">
+      {/* Mock data label */}
+      <p
+        className="text-center relative z-10"
+        style={{
+          fontFamily: "'Merriweather Sans', sans-serif",
+          fontSize: '11px',
+          fontStyle: 'italic',
+          color: '#B0B8BF',
+        }}
+      >
         Mock-data – Garmin-synk kommer snart
       </p>
     </div>

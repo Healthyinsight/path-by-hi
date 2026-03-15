@@ -20,7 +20,6 @@ import { getNutritionTargets } from '@/lib/nutritionEngine';
 
 /* ---- helpers ---- */
 const fmtDate = (d: Date) => d.toISOString().split('T')[0];
-
 const RACE_DATE = new Date('2026-07-05');
 
 function daysUntilRace() {
@@ -35,12 +34,12 @@ function weeksProgress() {
   return { currentWeek, totalWeeks };
 }
 
-function getGreeting(name: string): { text: string; emoji: string } {
+function getGreeting(name: string): string {
   const hour = new Date().getHours();
-  if (hour >= 5 && hour < 11) return { text: `God morgon, ${name}`, emoji: '☀️' };
-  if (hour >= 11 && hour < 17) return { text: `Hej ${name}`, emoji: '👋' };
-  if (hour >= 17 && hour < 22) return { text: `God kväll, ${name}`, emoji: '🌙' };
-  return { text: `Nattuglan är ute, ${name}`, emoji: '🦉' };
+  if (hour >= 5 && hour < 11) return `God morgon, ${name} ☀️`;
+  if (hour >= 11 && hour < 17) return `Hej ${name} 👋`;
+  if (hour >= 17 && hour < 22) return `God kväll, ${name} 🌙`;
+  return `Nattuglan är ute, ${name} 🦉`;
 }
 
 function getWorkoutMotivation(sport?: string, type?: string): string {
@@ -64,16 +63,12 @@ function getUserFirstName(user: any, profile: any): string {
   return 'där';
 }
 
-const sportLabels: Record<string, string> = {
-  bike: 'Cykling', run: 'Löpning', swim: 'Simning', strength: 'Styrka',
-};
+const sportLabels: Record<string, string> = { bike: 'Cykling', run: 'Löpning', swim: 'Simning', strength: 'Styrka' };
 const subtypeLabels: Record<string, string> = {
   long_distance: 'Långdistans', vo2max: 'VO2max', upper: 'Överkropp', lower: 'Underkropp',
   long_swim: 'Långsim', technique_intervals: 'Teknik & Intervaller',
 };
-const workoutIcons: Record<string, string> = {
-  bike: '🚴', run: '🏃', swim: '🏊', strength: '💪',
-};
+const workoutIcons: Record<string, string> = { bike: '🚴', run: '🏃', swim: '🏊', strength: '💪' };
 const nutritionTips: Record<string, string> = {
   strength: '💪 Styrkedag = höj proteinet. Sikta på 175g+.',
   long_distance: '🚴 Långpass = fuel first. Kolhydrater är din vän idag.',
@@ -82,17 +77,16 @@ const nutritionTips: Record<string, string> = {
   long_swim: '🏊 Långsim = ät ordentligt innan, 310g carbs idag.',
   technique_intervals: '🏊 Tekniksim = lättare dag, perfekt för litet underskott.',
 };
-
 const DEFAULT_NUTRITION = { kcal: 2400, protein: 170, carbs: 270, fat: 72 };
 
 function fireConfetti() {
-  const colors = ['#5095AC', '#839F8D', '#D4E67C', '#FFFFFF'];
   confetti({
     particleCount: 80,
     spread: 60,
     origin: { y: 0.7 },
-    colors,
-    disableForReducedMotion: true,
+    colors: ['#5095AC', '#839F8D', '#D4E67C', '#FFFFFF'],
+    gravity: 1.2,
+    ticks: 150,
   });
 }
 
@@ -102,7 +96,11 @@ const cardVariant = (i: number) => ({
   visible: {
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.15, duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
+    transition: {
+      delay: i * 0.15,
+      duration: 0.5,
+      ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
+    },
   },
 });
 
@@ -185,7 +183,6 @@ export default function TodayView() {
 
   const tipKey = workout?.planned_subtype || workout?.planned_type || 'rest';
   const nutritionTip = nutritionTips[tipKey] || nutritionTips.rest;
-
   const { currentWeek, totalWeeks } = weeksProgress();
   const daysLeft = daysUntilRace();
   const firstName = getUserFirstName(user, profile);
@@ -198,40 +195,35 @@ export default function TodayView() {
   return (
     <div className="bg-today">
       <div className="app-container pt-4">
-        {/* A. Greeting + Streak */}
+        {/* 0. Greeting Header */}
         <motion.section
           variants={cardVariant(0)}
           initial="hidden"
           animate="visible"
-          className="space-y-1 mb-5"
+          className="mb-5"
         >
           <div className="flex items-center justify-between">
-            <h1 className="text-xl tracking-tight" style={{ color: '#1A2B32' }}>
-              {greeting.text} {greeting.emoji}
+            <h1 style={{ fontFamily: "'Merriweather', serif", fontSize: '24px', fontWeight: 700, color: '#1A2B32' }}>
+              {greeting}
             </h1>
             {recovery.currentStreak > 0 && (
-              <span className="streak-pill">🔥 {recovery.currentStreak}</span>
+              <span className="streak-pill">🔥 {recovery.currentStreak} dagar i rad</span>
             )}
           </div>
-          <p className="text-sm capitalize" style={{ color: '#6B7B84', fontFamily: "'Merriweather Sans', sans-serif" }}>
+          <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '14px', color: '#6B7B84', marginTop: '4px', textTransform: 'capitalize' }}>
             {swedishDate}
           </p>
-          <p className="text-xs italic" style={{ color: '#6B7B84', fontFamily: "'Merriweather Sans', sans-serif" }}>
+          <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', fontStyle: 'italic', color: '#8E9BA3', marginTop: '2px' }}>
             {motivation}
           </p>
-          <div className="flex items-center gap-2 pt-1">
-            <span className="text-[11px] font-data-num" style={{ color: '#8E9BA3' }}>
-              Vecka {currentWeek}/{totalWeeks} → {profile?.goal_name || 'Ironman 70.3'} · {daysLeft} dagar kvar
-            </span>
-          </div>
         </motion.section>
 
-        {/* B. Recovery Ring */}
+        {/* 1. Recovery Ring */}
         <motion.section variants={cardVariant(1)} initial="hidden" animate="visible" className="mb-4">
           <RecoveryRing />
         </motion.section>
 
-        {/* C. Race Countdown Arc */}
+        {/* 2. Race Countdown */}
         <motion.section variants={cardVariant(2)} initial="hidden" animate="visible" className="mb-4">
           <RaceCountdownArc
             currentWeek={currentWeek}
@@ -241,96 +233,131 @@ export default function TodayView() {
           />
         </motion.section>
 
-        {/* D. Workout Card */}
+        {/* 3. Workout Card */}
         <motion.section variants={cardVariant(3)} initial="hidden" animate="visible" className="mb-4">
           {loadingWorkout ? (
             <div className="card-glass animate-pulse h-28" />
           ) : workout ? (
-            <div className={`card-glass space-y-3 ${workout.completed ? 'opacity-90' : ''}`}>
+            <div className="card-glass space-y-3" style={{ opacity: workout.completed ? 0.85 : 1 }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">{workoutIcons[workout.planned_sport] || '🏋️'}</span>
+                  <span style={{ fontSize: '24px' }}>{workoutIcons[workout.planned_sport] || '🏋️'}</span>
                   <div>
-                    <p className="font-bold text-sm" style={{ color: '#1A2B32' }}>
+                    <p style={{ fontFamily: "'Merriweather', serif", fontSize: '16px', fontWeight: 600, color: '#1A2B32' }}>
+                      {workout.completed && '✅ '}
                       {sportLabels[workout.planned_sport] || workout.planned_type}
                       {' – '}
                       {subtypeLabels[workout.planned_subtype] || workout.planned_subtype}
                     </p>
-                    <p className="text-xs capitalize" style={{ color: '#6B7B84' }}>{workout.planned_type}</p>
+                    <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', color: '#6B7B84', textTransform: 'capitalize' }}>
+                      {workout.planned_type}
+                    </p>
                   </div>
                 </div>
                 {workout.completed ? (
-                  <span className="flex items-center gap-1 rounded-full bg-rest/10 px-3 py-1 text-xs font-medium text-rest">
-                    <Check className="h-3 w-3" /> ✅ Klart
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                    borderRadius: '9999px', padding: '4px 12px',
+                    background: 'rgba(131, 159, 141, 0.15)',
+                    fontFamily: "'Merriweather Sans', sans-serif", fontSize: '12px', fontWeight: 600, color: '#839F8D',
+                  }}>
+                    ✅ Klart
                   </span>
                 ) : (
-                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center',
+                    borderRadius: '9999px', padding: '4px 12px',
+                    background: 'rgba(80, 149, 172, 0.1)',
+                    fontFamily: "'Merriweather Sans', sans-serif", fontSize: '12px', fontWeight: 600, color: '#5095AC',
+                  }}>
                     Planerat
                   </span>
                 )}
               </div>
 
               {workout.planned_details && (
-                <div className="rounded-xl border border-border bg-muted/30 p-3">
+                <div style={{ borderRadius: '12px', border: '1px solid #E8EDEF', background: '#F0F4F5', padding: '12px' }}>
                   {workout.planned_type === 'strength' ? (
-                    <div className="space-y-1.5">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {workout.planned_details.split('\n').slice(0, 3).map((line: string, i: number) => (
-                        <p key={i} className="text-xs leading-relaxed" style={{ color: '#3D4F58' }}>• {line}</p>
+                        <p key={i} style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', color: '#3D4F58', lineHeight: 1.6 }}>• {line}</p>
                       ))}
                       {workout.planned_details.split('\n').length > 3 && (
-                        <p className="text-xs" style={{ color: '#8E9BA3' }}>
+                        <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '12px', color: '#8E9BA3' }}>
                           +{workout.planned_details.split('\n').length - 3} fler övningar
                         </p>
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs leading-relaxed" style={{ color: '#3D4F58' }}>{workout.planned_details}</p>
+                    <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', color: '#3D4F58', lineHeight: 1.6 }}>
+                      {workout.planned_details}
+                    </p>
                   )}
                 </div>
               )}
 
               <div className="flex gap-2">
                 {!workout.completed && (
-                  <Button onClick={markCompleted} size="sm" className="flex-1 touch-target">
+                  <Button
+                    onClick={markCompleted}
+                    size="sm"
+                    className="flex-1 touch-target"
+                    style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
+                  >
                     <Check className="mr-1.5 h-4 w-4" /> Markera som klart
                   </Button>
                 )}
-                <Button variant="outline" size="sm" className="touch-target" onClick={() => navigate('/schedule')}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="touch-target"
+                  onClick={() => navigate('/schedule')}
+                  style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
+                >
                   Ändra plan
                 </Button>
               </div>
             </div>
           ) : (
             <div className="card-glass flex flex-col items-center gap-3 py-6">
-              <span className="text-3xl">📋</span>
-              <p className="text-sm" style={{ color: '#6B7B84' }}>Inget pass planerat idag</p>
-              <Button size="sm" onClick={generateNewSchedule} className="touch-target">
+              <span style={{ fontSize: '32px' }}>📋</span>
+              <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '14px', color: '#6B7B84' }}>
+                Inget pass planerat idag
+              </p>
+              <Button
+                size="sm"
+                onClick={generateNewSchedule}
+                className="touch-target"
+                style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
+              >
                 Generera schema
               </Button>
             </div>
           )}
         </motion.section>
 
-        {/* E. Nutrition */}
+        {/* 4. Nutrition */}
         <motion.section variants={cardVariant(4)} initial="hidden" animate="visible" className="mb-4">
           {loadingNutrition ? (
             <div className="card-glass animate-pulse h-28" />
           ) : (
             <div className="card-glass space-y-3">
-              <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: '#1A2B32' }}>
+              <h3 style={{ fontFamily: "'Merriweather', serif", fontSize: '16px', fontWeight: 600, color: '#1A2B32', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 🍽️ Dagens kost
               </h3>
-              <div className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {([
                   { label: 'Kalorier', actual: nutActuals.kcal, target: nutTargets.kcal, unit: 'kcal' },
                   { label: 'Protein', actual: nutActuals.protein, target: nutTargets.protein, unit: 'g' },
                   { label: 'Kolhydrater', actual: nutActuals.carbs, target: nutTargets.carbs, unit: 'g' },
                   { label: 'Fett', actual: nutActuals.fat, target: nutTargets.fat, unit: 'g' },
                 ] as const).map((macro) => (
-                  <div key={macro.label} className="space-y-0.5">
-                    <div className="flex justify-between text-xs">
-                      <span style={{ color: '#6B7B84' }}>{macro.label}</span>
-                      <span className="font-data-num" style={{ color: '#3D4F58' }}>
+                  <div key={macro.label}>
+                    <div className="flex justify-between" style={{ marginBottom: '2px' }}>
+                      <span style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', color: '#6B7B84' }}>
+                        {macro.label}
+                      </span>
+                      <span className="font-data-num" style={{ fontSize: '13px', color: '#3D4F58' }}>
                         {macro.actual}/{macro.target}{macro.unit}
                       </span>
                     </div>
@@ -342,30 +369,52 @@ export default function TodayView() {
                 ))}
               </div>
               <div className="tip-callout">
-                <p className="text-xs" style={{ color: '#3D4F58' }}>{nutritionTip}</p>
+                <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', color: '#3D4F58' }}>
+                  {nutritionTip}
+                </p>
               </div>
             </div>
           )}
         </motion.section>
 
-        {/* F. Insights */}
+        {/* 5. Insights */}
         <motion.section variants={cardVariant(5)} initial="hidden" animate="visible" className="mb-4 space-y-3">
-          <h3 className="text-sm font-bold" style={{ color: '#1A2B32' }}>💡 Insikter</h3>
+          <h3 style={{ fontFamily: "'Merriweather', serif", fontSize: '16px', fontWeight: 600, color: '#1A2B32' }}>
+            💡 Insikter
+          </h3>
           {insights.map((insight) => (
             <InsightCard key={insight.id} insight={insight} />
           ))}
         </motion.section>
 
-        {/* G. Quick Actions */}
+        {/* 6. Quick Actions */}
         <motion.section variants={cardVariant(6)} initial="hidden" animate="visible" className="pb-2">
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="flex-1 touch-target text-xs" onClick={() => navigate('/schedule')}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 touch-target"
+              onClick={() => navigate('/schedule')}
+              style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', fontWeight: 600 }}
+            >
               <ClipboardList className="mr-1.5 h-4 w-4" /> Logga pass
             </Button>
-            <Button variant="outline" size="sm" className="flex-1 touch-target text-xs" onClick={() => toast.info('Måltidsloggning kommer snart!')}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 touch-target"
+              onClick={() => toast.info('Måltidsloggning kommer snart!')}
+              style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', fontWeight: 600 }}
+            >
               <ChefHat className="mr-1.5 h-4 w-4" /> Logga måltid
             </Button>
-            <Button variant="outline" size="sm" className="flex-1 touch-target text-xs" onClick={() => navigate('/schedule')}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 touch-target"
+              onClick={() => navigate('/schedule')}
+              style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', fontWeight: 600 }}
+            >
               <Calendar className="mr-1.5 h-4 w-4" /> Se veckan
             </Button>
           </div>
