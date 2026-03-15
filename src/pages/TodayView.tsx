@@ -116,8 +116,8 @@ export default function TodayView() {
   const [loadingWorkout, setLoadingWorkout] = useState(true);
   const [loadingNutrition, setLoadingNutrition] = useState(true);
 
-  const insights = useMemo(() => getTodayInsights(), []);
-  const recovery = useMemo(() => getTodayRecovery(), []);
+  const { insights, loading: loadingInsights } = useInsights();
+  const [showAllInsights, setShowAllInsights] = useState(false);
 
   useEffect(() => {
     if (!user) return;
