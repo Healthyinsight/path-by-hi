@@ -68,7 +68,6 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
             minHeight: '1.3em',
             fontFamily: "'Merriweather', serif",
             fontWeight: 700,
-            letterSpacing: '0.02em',
           }}
         >
           <AnimatePresence mode="wait">
@@ -96,7 +95,6 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
           style={{
             fontFamily: "'Merriweather', serif",
             fontWeight: 700,
-            letterSpacing: '0.02em',
             textAlign: 'center',
             whiteSpace: 'nowrap',
             color: '#1A2B32',
@@ -110,6 +108,8 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
       <div
         className="mt-8"
         style={{
+          display: 'inline-flex',
+          alignItems: 'center',
           fontFamily: "'Merriweather Sans', sans-serif",
           fontSize: '11px',
           letterSpacing: '0.5px',
@@ -117,6 +117,7 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
           border: '1px solid rgba(0,0,0,0.08)',
           borderRadius: '20px',
           padding: '4px 12px',
+          background: 'rgba(255, 255, 255, 0.5)',
         }}
       >
         Powered by Healthy Insight

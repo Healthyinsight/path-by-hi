@@ -86,28 +86,36 @@
     font-feature-settings: 'tnum' 1;
   }
 
-  /* Premium glassmorphism card */
+  /* Glassmorphism card */
   .card-glass {
-    @apply rounded-2xl p-4 shadow-sm;
+    padding: 16px;
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
     box-shadow: 0 4px 24px rgba(26, 43, 50, 0.06);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .card-glass:hover {
-    box-shadow: 0 8px 32px rgba(26, 43, 50, 0.1);
+  @media (min-width: 640px) {
+    .card-glass {
+      padding: 20px;
+    }
+    .card-glass:hover {
+      box-shadow: 0 8px 32px rgba(26, 43, 50, 0.1);
+      transform: translateY(-2px);
+    }
   }
 
-  /* Keep original for non-today pages */
+  /* Keep card-athletic as alias for other pages */
   .card-athletic {
-    @apply rounded-2xl p-4 shadow-sm;
+    @apply rounded-2xl p-4;
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
     box-shadow: 0 4px 24px rgba(26, 43, 50, 0.06);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -117,11 +125,13 @@
   }
 
   .app-container {
-    @apply mx-auto max-w-[480px] min-h-screen px-4 pb-24;
+    @apply mx-auto max-w-[480px] min-h-screen px-4;
+    padding-bottom: 80px;
   }
 
   .tip-callout {
-    @apply rounded-xl border-l-4 border-primary bg-primary/5 p-4;
+    @apply rounded-xl border-l-4 border-primary p-4;
+    background: rgba(80, 149, 172, 0.05);
   }
 
   .safe-area-bottom {
@@ -132,22 +142,46 @@
   .bg-today {
     background: linear-gradient(180deg, #FAFBFC 0%, #F0F4F5 50%, #E8EDEF 100%);
     min-height: 100vh;
+    background-attachment: fixed;
   }
 
   /* Metric label style */
   .metric-label {
     font-family: 'Merriweather Sans', sans-serif;
     font-size: 11px;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
     color: #8E9BA3;
   }
 
   /* Streak pill */
   .streak-pill {
-    @apply inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold;
-    background: linear-gradient(135deg, #FF9800, #FF6B35);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 28px;
+    border-radius: 14px;
+    padding: 4px 12px;
+    background: linear-gradient(135deg, #F59E0B, #EF6C00);
     color: white;
+    font-family: 'Merriweather Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  /* Metric pill badge */
+  .metric-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 30px;
+    border-radius: 15px;
+    padding: 4px 12px;
+    background: #F0F4F5;
+    border: 1px solid #E8EDEF;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    color: #3D4F58;
   }
 }
 
@@ -160,8 +194,8 @@
   to { opacity: 1; transform: translateX(0); }
 }
 @keyframes ring-glow {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.6; }
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.5; }
 }
 .animate-slide-in-left { animation: slide-in-left 0.3s ease-out; }
 .animate-slide-in-right { animation: slide-in-right 0.3s ease-out; }

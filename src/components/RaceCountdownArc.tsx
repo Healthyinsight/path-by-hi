@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
 
-const ARC_SIZE = 160;
-const STROKE = 10;
-const R = (ARC_SIZE - STROKE) / 2;
-// Semi-circle arc (π radians)
+const ARC_W = 140;
+const ARC_H = 80;
+const STROKE = 8;
+const R = (ARC_W - STROKE) / 2;
 const SEMI_CIRC = Math.PI * R;
 
 interface Props {
@@ -16,14 +16,21 @@ interface Props {
 export function RaceCountdownArc({ currentWeek, totalWeeks, daysLeft, goalName }: Props) {
   const pct = Math.min(1, currentWeek / totalWeeks);
   const offset = SEMI_CIRC * (1 - pct);
+  // Split goal name at space before last word for two-line display
+  const nameParts = goalName.split(' ');
+  const mainName = nameParts.length > 1
+    ? nameParts.slice(0, -1).join(' ')
+    : goalName;
+  const subName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
 
   return (
-    <div className="card-glass flex flex-col items-center gap-3 py-5">
-      <div className="relative" style={{ width: ARC_SIZE, height: ARC_SIZE / 2 + 20 }}>
+    <div className="card-glass flex items-center gap-4" style={{ minHeight: '120px' }}>
+      {/* Left: Semi-circular arc */}
+      <div className="relative flex-shrink-0" style={{ width: ARC_W, height: ARC_H + 10 }}>
         <svg
-          width={ARC_SIZE}
-          height={ARC_SIZE / 2 + STROKE}
-          viewBox={`0 0 ${ARC_SIZE} ${ARC_SIZE / 2 + STROKE}`}
+          width={ARC_W}
+          height={ARC_H + STROKE}
+          viewBox={`0 0 ${ARC_W} ${ARC_H + STROKE}`}
         >
           <defs>
             <linearGradient id="race-arc-grad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -34,17 +41,16 @@ export function RaceCountdownArc({ currentWeek, totalWeeks, daysLeft, goalName }
 
           {/* Background track */}
           <path
-            d={`M ${STROKE / 2} ${ARC_SIZE / 2} A ${R} ${R} 0 0 1 ${ARC_SIZE - STROKE / 2} ${ARC_SIZE / 2}`}
+            d={`M ${STROKE / 2} ${ARC_H} A ${R} ${R} 0 0 1 ${ARC_W - STROKE / 2} ${ARC_H}`}
             fill="none"
-            stroke="hsl(var(--muted))"
+            stroke="#E8EDEF"
             strokeWidth={STROKE}
             strokeLinecap="round"
-            opacity={0.4}
           />
 
           {/* Progress arc */}
           <motion.path
-            d={`M ${STROKE / 2} ${ARC_SIZE / 2} A ${R} ${R} 0 0 1 ${ARC_SIZE - STROKE / 2} ${ARC_SIZE / 2}`}
+            d={`M ${STROKE / 2} ${ARC_H} A ${R} ${R} 0 0 1 ${ARC_W - STROKE / 2} ${ARC_H}`}
             fill="none"
             stroke="url(#race-arc-grad)"
             strokeWidth={STROKE}
@@ -55,30 +61,53 @@ export function RaceCountdownArc({ currentWeek, totalWeeks, daysLeft, goalName }
             transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
           />
 
-          {/* Flag at end */}
+          {/* Flag at end of full arc */}
           <text
-            x={ARC_SIZE - STROKE / 2 - 2}
-            y={ARC_SIZE / 2 - STROKE - 2}
+            x={ARC_W - STROKE / 2}
+            y={ARC_H - STROKE - 4}
             fontSize="14"
-            textAnchor="end"
+            textAnchor="middle"
           >
             🏁
           </text>
         </svg>
 
         {/* Center percentage */}
-        <div className="absolute inset-0 flex flex-col items-center justify-end pb-0">
-          <span className="font-data text-2xl font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>
+        <div className="absolute inset-0 flex items-end justify-center" style={{ paddingBottom: '4px' }}>
+          <span
+            style={{
+              fontFamily: "'Inter', system-ui, sans-serif",
+              fontSize: '24px',
+              fontWeight: 700,
+              fontVariantNumeric: 'tabular-nums',
+              color: '#1A2B32',
+            }}
+          >
             {Math.round(pct * 100)}%
           </span>
         </div>
       </div>
 
-      <div className="text-center space-y-0.5">
-        <p className="text-xs text-muted-foreground font-data-num">
-          Vecka {currentWeek} av {totalWeeks} · {daysLeft} dagar kvar
+      {/* Right: Text info */}
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <p style={{ fontFamily: "'Merriweather', serif", fontSize: '14px', fontWeight: 700, color: '#1A2B32' }}>
+          {mainName}
         </p>
-        <p className="text-xs font-semibold">{goalName}</p>
+        {subName && (
+          <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', color: '#6B7B84' }}>
+            {subName}
+          </p>
+        )}
+        <p
+          style={{
+            fontFamily: "'Merriweather Sans', sans-serif",
+            fontSize: '12px',
+            color: '#8E9BA3',
+            marginTop: '2px',
+          }}
+        >
+          Vecka {currentWeek} av {totalWeeks} • {daysLeft} dagar kvar
+        </p>
       </div>
     </div>
   );
