@@ -168,6 +168,60 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_rules: {
+        Row: {
+          action_text: string | null
+          applicable_archetypes: string[]
+          applicable_disciplines: string[]
+          category: string
+          created_at: string
+          id: string
+          insight_body: string
+          insight_title: string
+          is_active: boolean
+          priority: number
+          severity: string
+          source_name: string | null
+          source_url: string | null
+          trigger_condition: Json
+          trigger_type: string
+        }
+        Insert: {
+          action_text?: string | null
+          applicable_archetypes?: string[]
+          applicable_disciplines?: string[]
+          category: string
+          created_at?: string
+          id?: string
+          insight_body: string
+          insight_title: string
+          is_active?: boolean
+          priority?: number
+          severity: string
+          source_name?: string | null
+          source_url?: string | null
+          trigger_condition?: Json
+          trigger_type: string
+        }
+        Update: {
+          action_text?: string | null
+          applicable_archetypes?: string[]
+          applicable_disciplines?: string[]
+          category?: string
+          created_at?: string
+          id?: string
+          insight_body?: string
+          insight_title?: string
+          is_active?: boolean
+          priority?: number
+          severity?: string
+          source_name?: string | null
+          source_url?: string | null
+          trigger_condition?: Json
+          trigger_type?: string
+        }
+        Relationships: []
+      }
       nutrition_plan: {
         Row: {
           actual_carbs: number | null

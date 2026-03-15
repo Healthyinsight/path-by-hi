@@ -9,7 +9,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { RecoveryRing } from '@/components/RecoveryRing';
 import { RaceCountdownArc } from '@/components/RaceCountdownArc';
 import { InsightCard } from '@/components/InsightCard';
-import { getTodayInsights } from '@/data/mockInsights';
+import { useInsights } from '@/hooks/useInsights';
 import { getTodayRecovery, getStreakMessage } from '@/data/mockRecoveryData';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -116,9 +116,9 @@ export default function TodayView() {
   const [loadingWorkout, setLoadingWorkout] = useState(true);
   const [loadingNutrition, setLoadingNutrition] = useState(true);
 
-  const insights = useMemo(() => getTodayInsights(), []);
+  const { insights, loading: loadingInsights } = useInsights();
+  const [showAllInsights, setShowAllInsights] = useState(false);
   const recovery = useMemo(() => getTodayRecovery(), []);
-
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -382,9 +382,36 @@ export default function TodayView() {
           <h3 style={{ fontFamily: "'Merriweather', serif", fontSize: '16px', fontWeight: 600, color: '#1A2B32' }}>
             💡 Insikter
           </h3>
-          {insights.map((insight) => (
-            <InsightCard key={insight.id} insight={insight} />
-          ))}
+          {loadingInsights ? (
+            <>
+              <div className="card-glass animate-pulse h-24" />
+              <div className="card-glass animate-pulse h-20" />
+            </>
+          ) : insights.length === 0 ? (
+            <div className="card-glass" style={{ borderLeft: '3px solid #839F8D', background: 'rgba(131, 159, 141, 0.05)' }}>
+              <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '14px', color: '#3D4F58' }}>
+                ✅ Allt ser bra ut! Fortsätt fokusera på ditt mål.
+              </p>
+            </div>
+          ) : (
+            <>
+              {(showAllInsights ? insights.slice(0, 5) : insights.slice(0, 2)).map((rule, i) => (
+                <InsightCard key={rule.id} rule={rule} index={i} />
+              ))}
+              {insights.length > 2 && !showAllInsights && (
+                <button
+                  onClick={() => setShowAllInsights(true)}
+                  style={{
+                    background: 'none', border: 'none', padding: '6px 0',
+                    fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px',
+                    fontWeight: 600, color: '#5095AC', cursor: 'pointer',
+                  }}
+                >
+                  Visa fler insikter →
+                </button>
+              )}
+            </>
+          )}
         </motion.section>
 
         {/* 6. Quick Actions */}
