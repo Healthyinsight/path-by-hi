@@ -2,6 +2,7 @@
 
 export interface RecoveryData {
   status: 'green' | 'yellow' | 'red';
+  score: number;
   statusLabel: string;
   statusAdvice: string;
   summary: string;
@@ -13,6 +14,7 @@ export interface RecoveryData {
 const RECOVERY_STATES: RecoveryData[] = [
   {
     status: 'green',
+    score: 78,
     statusLabel: 'Redo – Kör som planerat',
     statusAdvice: 'Alla system go. Dags att prestera!',
     summary: 'Du sov 7.2h med bra djupsömn. HRV stabil. Kör som planerat.',
@@ -22,6 +24,7 @@ const RECOVERY_STATES: RecoveryData[] = [
   },
   {
     status: 'yellow',
+    score: 52,
     statusLabel: 'Måttlig – Lyssna på kroppen',
     statusAdvice: 'Du kan träna men anpassa intensiteten.',
     summary: 'Sömnen var okej men HRV lite lägre än vanligt. Undvik maxinsatser idag.',
@@ -31,6 +34,7 @@ const RECOVERY_STATES: RecoveryData[] = [
   },
   {
     status: 'red',
+    score: 28,
     statusLabel: 'Vila – Prioritera återhämtning',
     statusAdvice: 'Kroppen behöver vila. Byt till lättare aktivitet.',
     summary: 'Dålig sömn och låg HRV. Prioritera återhämtning idag – promenad eller yoga.',
