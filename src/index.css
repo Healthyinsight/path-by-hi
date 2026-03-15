@@ -101,6 +101,10 @@
   .tip-callout {
     @apply rounded-xl border-l-4 border-primary bg-primary/5 p-4;
   }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 @keyframes slide-in-left {
