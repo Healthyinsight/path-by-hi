@@ -18,6 +18,7 @@ type Archetype = 'triathlon' | 'running' | 'strength' | 'weight_loss' | 'wellnes
 
 interface QuizState {
   display_name: string;
+  trail_name: string;
   archetype: Archetype | '';
   // triathlon
   tri_distance: string;
@@ -52,6 +53,7 @@ interface QuizState {
 
 const initialState: QuizState = {
   display_name: '',
+  trail_name: '',
   archetype: '',
   tri_distance: '', has_race: null, race_name: '', race_date: undefined, tri_level: '',
   run_distance: '', run_has_race: null, run_race_name: '', run_race_date: undefined, run_frequency: '',
@@ -93,6 +95,7 @@ export default function Onboarding() {
         setState(s => ({
           ...s,
           display_name: data.display_name || '',
+          trail_name: (data as any).trail_name || '',
           archetype: data.archetype || '',
         }));
       }
@@ -108,12 +111,12 @@ export default function Onboarding() {
   const getSteps = (): string[] => {
     const base = ['name', 'goal'];
     const arch = state.archetype;
-    if (arch === 'triathlon') return [...base, 'tri_distance', 'tri_race', 'tri_level', 'summary'];
-    if (arch === 'running') return [...base, 'run_distance', 'run_race', 'run_frequency', 'summary'];
-    if (arch === 'strength') return [...base, 'str_equipment', 'str_injuries', 'str_days', 'summary'];
-    if (arch === 'weight_loss') return [...base, 'wl_weight', 'wl_target', 'wl_activity', 'summary'];
-    if (arch === 'wellness') return [...base, 'well_focus', 'well_activity', 'summary'];
-    if (arch === 'custom') return [...base, 'cust_describe', 'cust_map', 'cust_date', 'summary'];
+    if (arch === 'triathlon') return [...base, 'tri_distance', 'tri_race', 'tri_level', 'summary', 'trail_name'];
+    if (arch === 'running') return [...base, 'run_distance', 'run_race', 'run_frequency', 'summary', 'trail_name'];
+    if (arch === 'strength') return [...base, 'str_equipment', 'str_injuries', 'str_days', 'summary', 'trail_name'];
+    if (arch === 'weight_loss') return [...base, 'wl_weight', 'wl_target', 'wl_activity', 'summary', 'trail_name'];
+    if (arch === 'wellness') return [...base, 'well_focus', 'well_activity', 'summary', 'trail_name'];
+    if (arch === 'custom') return [...base, 'cust_describe', 'cust_map', 'cust_date', 'summary', 'trail_name'];
     return base;
   };
 
@@ -146,6 +149,7 @@ export default function Onboarding() {
       case 'cust_describe': return state.custom_goal.trim().length > 0;
       case 'cust_map': return state.custom_archetype !== '';
       case 'cust_date': return true;
+      case 'trail_name': return true;
       default: return true;
     }
   };
@@ -265,6 +269,7 @@ export default function Onboarding() {
     return {
       user_id: user!.id,
       display_name: state.display_name,
+      trail_name: state.trail_name || null,
       archetype: arch,
       goal_name,
       goal_date,
@@ -710,6 +715,41 @@ export default function Onboarding() {
         );
       }
 
+      case 'trail_name':
+        return (
+          <StepContainer
+            title="Välj ditt Trail Name"
+            subtitle="Ett unikt namn som följer dig på din resa"
+          >
+            <div className="space-y-4">
+              <Input
+                value={state.trail_name}
+                onChange={e => set('trail_name', e.target.value.slice(0, 30))}
+                placeholder="t.ex. Mountain Fox, Iron Viking, Storm Runner"
+                maxLength={30}
+                className="h-[52px] text-base rounded-lg"
+              />
+              <div className="flex flex-col items-stretch gap-2">
+                <Button
+                  onClick={handleFinish}
+                  disabled={saving}
+                  className="w-full h-[52px] text-base font-semibold rounded-[10px] bg-[#5095AC] hover:bg-[#468298]"
+                >
+                  {saving ? 'Sparar...' : 'Fortsätt'}
+                </Button>
+                <button
+                  type="button"
+                  onClick={handleFinish}
+                  className="text-xs text-[#8E9BA3] hover:text-[#6B7B84] underline-offset-2 hover:underline mx-auto"
+                  style={{ fontFamily: "'Merriweather Sans', sans-serif" }}
+                >
+                  Hoppa över
+                </button>
+              </div>
+            </div>
+          </StepContainer>
+        );
+
       default:
         return null;
     }
@@ -742,8 +782,8 @@ export default function Onboarding() {
         </div>
       </div>
 
-      {/* Next button (except for summary and auto-advance steps) */}
-      {currentStepName !== 'summary' && currentStepName !== 'goal' && (
+      {/* Next button (except for summary, trail name and auto-advance steps) */}
+      {currentStepName !== 'summary' && currentStepName !== 'goal' && currentStepName !== 'trail_name' && (
         <div className="sticky bottom-0 px-4 pb-6 pt-2 bg-gradient-to-t from-background/80 to-transparent">
           <div className="mx-auto max-w-[480px]">
             <Button onClick={goNext} disabled={!canProceed()}

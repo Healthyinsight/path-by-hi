@@ -375,6 +375,7 @@ export type Database = {
           created_at: string | null
           disciplines: string[] | null
           display_name: string | null
+          trail_name: string | null
           equipment: string | null
           goal_date: string | null
           goal_emoji: string | null
@@ -399,6 +400,7 @@ export type Database = {
           created_at?: string | null
           disciplines?: string[] | null
           display_name?: string | null
+          trail_name?: string | null
           equipment?: string | null
           goal_date?: string | null
           goal_emoji?: string | null
@@ -423,6 +425,7 @@ export type Database = {
           created_at?: string | null
           disciplines?: string[] | null
           display_name?: string | null
+          trail_name?: string | null
           equipment?: string | null
           goal_date?: string | null
           goal_emoji?: string | null

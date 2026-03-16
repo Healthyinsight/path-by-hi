@@ -6,6 +6,7 @@ export interface UserProfileData {
   id: string;
   user_id: string;
   display_name: string | null;
+  trail_name: string | null;
   archetype: string;
   goal_name: string | null;
   goal_date: string | null;

@@ -186,7 +186,9 @@ export default function TodayView() {
   const { currentWeek, totalWeeks } = weeksProgress();
   const daysLeft = daysUntilRace();
   const firstName = getUserFirstName(user, profile);
-  const greeting = getGreeting(firstName);
+  const greeting = profile?.trail_name
+    ? `Hej, ${profile.trail_name}!`
+    : getGreeting(firstName);
   const motivation = getWorkoutMotivation(workout?.planned_sport, workout?.planned_type);
   const swedishDate = new Date().toLocaleDateString('sv-SE', {
     weekday: 'long', day: 'numeric', month: 'long',
