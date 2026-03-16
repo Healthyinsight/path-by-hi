@@ -26,6 +26,448 @@ export const DEFAULT_ROTATOR: RotatorState = {
   longSwimCount: 0,
 };
 
+// -------------------------------
+// Archetype‑driven weekly planner
+// -------------------------------
+
+export type ArchetypeId =
+  | 'IRONMAN'
+  | 'COMPETITOR'
+  | 'RECOMP'
+  | 'WELLNESS'
+  | 'COMEBACK'
+  | 'EXPLORER';
+
+export interface ProfileInput {
+  archetype: ArchetypeId | string;
+  disciplines: string[] | null;
+  goal_date: string | null;
+}
+
+const DAY_NAMES_SV = ['måndag', 'tisdag', 'onsdag', 'torsdag', 'fredag', 'lördag', 'söndag'];
+
+function fmtDate(d: Date): string {
+  return d.toISOString().split('T')[0];
+}
+
+function pickDiscipline(preferred: string[], disciplines: string[] | null): string | null {
+  if (!disciplines || disciplines.length === 0) return preferred[0] || null;
+  for (const p of preferred) {
+    if (disciplines.includes(p)) return p;
+  }
+  return disciplines[0] || null;
+}
+
+function makeRestEntry(date: Date, label: string): ScheduleEntry {
+  return {
+    date: fmtDate(date),
+    planned_type: 'rest',
+    planned_subtype: 'rest',
+    planned_sport: 'rest',
+    planned_details: label,
+  };
+}
+
+function archetypeDetails(
+  archetype: ArchetypeId | string,
+  dayIndex: number,
+  sport: string | null
+): ScheduleEntry {
+  const date = new Date();
+  const base: ScheduleEntry = {
+    date: fmtDate(date),
+    planned_type: 'rest',
+    planned_subtype: 'rest',
+    planned_sport: sport || 'rest',
+    planned_details: '',
+  };
+
+  const dayName = DAY_NAMES_SV[dayIndex];
+
+  switch (archetype) {
+    case 'IRONMAN': {
+      const map = [
+        {
+          type: 'strength',
+          subtype: 'upper_core',
+          details: `Styrka – överkropp & core (45–60 min).\nFokus på press, drag och stabilitet för simning och cykling.`,
+        },
+        {
+          type: 'cardio',
+          subtype: 'z2_run',
+          details:
+            'Löpning Zone 2 (45–60 min).\nSnacktempo, jämn andning. Bygg aerob bas utan att bli sliten.',
+        },
+        {
+          type: 'swim',
+          subtype: 'technique',
+          details:
+            'Simning teknik (30–45 min).\nDrillar, lugna längder och fokus på vattenläge, catch och rotation.',
+        },
+        {
+          type: 'cardio',
+          subtype: 'z2_bike',
+          details:
+            'Cykel Zone 2 (60–90 min).\nJämnt tempo, låg puls. Trampa runt lätt men kontrollerat.',
+        },
+        {
+          type: 'strength',
+          subtype: 'lower_core',
+          details:
+            'Styrka – underkropp & core (45–60 min).\nFokus på benstyrka, höfter och bål för löp- och cykelekonomi.',
+        },
+        {
+          type: 'endurance_mix',
+          subtype: 'long_run_or_bike',
+          details:
+            'Långpass (60–90 min löpning eller 90–120 min cykel).\nHåll lugnt tempo, fokus på uthållighet och nutrition.',
+        },
+        {
+          type: 'rest',
+          subtype: 'easy_recovery',
+          details:
+            'Vilodag eller mycket lätt aktivitet (promenad, lugn sim). Din kropp bygger styrka nu – håll det enkelt.',
+        },
+      ][dayIndex];
+      return {
+        ...base,
+        planned_type: map.type,
+        planned_subtype: map.subtype,
+        planned_sport: sport || (map.type === 'strength' ? 'strength' : map.type === 'rest' ? 'rest' : 'run'),
+        planned_details: `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} – ${map.details}`,
+      };
+    }
+    case 'COMPETITOR': {
+      const map = [
+        {
+          type: 'strength',
+          subtype: 'full_body',
+          details:
+            'Styrka helkropp (45–60 min).\nFokus på basövningar, explosivitet och god teknik.',
+        },
+        {
+          type: 'primary',
+          subtype: 'intervals',
+          details:
+            'Intervallpass i din huvudgren.\nUppvärmning → 4–8 intervaller → nedvarvning. Hög men kontrollerad ansträngning.',
+        },
+        {
+          type: 'secondary',
+          subtype: 'easy',
+          details:
+            'Lätt pass i din sekundära gren (20–40 min).\nSnacktempo, fokus på rörelsekvalitet.',
+        },
+        {
+          type: 'strength',
+          subtype: 'full_body',
+          details:
+            'Styrka helkropp (45–60 min).\nLite tyngre än måndag, men lämna 1–2 reps i tanken.',
+        },
+        {
+          type: 'primary',
+          subtype: 'tempo',
+          details:
+            'Tempopass i din huvudgren (30–50 min effektiv tid).\nStrax under tävlingsfart, jämn och fokuserad ansträngning.',
+        },
+        {
+          type: 'primary',
+          subtype: 'long',
+          details:
+            'Långpass i din huvudgren.\nBygg uthållighet och testa pacing och energiintag.',
+        },
+        {
+          type: 'rest',
+          subtype: 'rest',
+          details:
+            'Vilodag. Fokus på sömn, mat och låg stress. En lugn promenad är ok om det känns bra.',
+        },
+      ][dayIndex];
+      return {
+        ...base,
+        planned_type: map.type,
+        planned_subtype: map.subtype,
+        planned_sport: sport || (map.type === 'strength' ? 'strength' : map.type === 'rest' ? 'rest' : 'run'),
+        planned_details: `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} – ${map.details}`,
+      };
+    }
+    case 'RECOMP': {
+      const map = [
+        {
+          type: 'strength',
+          subtype: 'push',
+          details:
+            'Push-pass (bröst, axlar, triceps) 45–60 min.\nMedelvikt, kontrollerad teknik, 2–3 set per övning.',
+        },
+        {
+          type: 'cardio',
+          subtype: 'z2',
+          details:
+            'Lugn cardio 30–40 min (gång, cykel eller lätt löpning).\nSyfte: öka energiförbrukning utan att slita.',
+        },
+        {
+          type: 'strength',
+          subtype: 'pull',
+          details:
+            'Pull-pass (rygg, biceps) 45–60 min.\nFokus på kontakt, kontrollerade reps, 2–3 set per övning.',
+        },
+        {
+          type: 'cardio',
+          subtype: 'intervals',
+          details:
+            'Enkel intervallcardio 25–30 min totalt.\nKort uppvärmning → 6–10 snabba intervaller → nedvarvning.',
+        },
+        {
+          type: 'strength',
+          subtype: 'legs',
+          details:
+            'Benpass 45–60 min.\nKnäböj/benpress, höftdominanta övningar och lite bål i slutet.',
+        },
+        {
+          type: 'recovery',
+          subtype: 'active',
+          details:
+            'Aktiv återhämtning (promenad, lätt cykel, yoga) 20–40 min.\nLåg puls, fokus på att må bra i kroppen.',
+        },
+        {
+          type: 'rest',
+          subtype: 'rest',
+          details:
+            'Hel vilodag.\nSov gott, ät bra och ladda mentalt för kommande vecka.',
+        },
+      ][dayIndex];
+      return {
+        ...base,
+        planned_type: map.type,
+        planned_subtype: map.subtype,
+        planned_sport: sport || (map.type === 'strength' ? 'strength' : map.type === 'rest' ? 'rest' : 'cardio'),
+        planned_details: `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} – ${map.details}`,
+      };
+    }
+    case 'WELLNESS': {
+      const map = [
+        {
+          type: 'strength',
+          subtype: 'full_body_short',
+          details:
+            'Styrka helkropp (ca 30 min).\n2–3 enkla övningar för överkropp, underkropp och core.',
+        },
+        {
+          type: 'cardio',
+          subtype: 'walk_light',
+          details:
+            'Promenad eller lätt cardio (30 min).\nTempo där du kan prata obehindrat.',
+        },
+        {
+          type: 'mobility',
+          subtype: 'yoga',
+          details:
+            'Yoga eller rörlighet (30 min).\nFokusera på höfter, bröstrygg och skuldror.',
+        },
+        {
+          type: 'strength',
+          subtype: 'full_body_short',
+          details:
+            'Styrka helkropp (ca 30 min).\nLätta vikter eller kroppsvikt, fokus på kvalitet före kvantitet.',
+        },
+        {
+          type: 'cardio',
+          subtype: 'free_choice',
+          details:
+            'Valfri kondition (30–45 min): cykel, gång, simning eller gruppklass.\nVälj något som känns kul.',
+        },
+        {
+          type: 'outdoor',
+          subtype: 'activity',
+          details:
+            'Utomhusaktivitet (t.ex. hike, simning, cykel, paddling).\nNjut av att vara ute, inte av att ta ut dig.',
+        },
+        {
+          type: 'rest',
+          subtype: 'rest',
+          details:
+            'Vilodag.\nKänn efter i kroppen, ta en lugn promenad om det känns bra – annars helt fri dag.',
+        },
+      ][dayIndex];
+      return {
+        ...base,
+        planned_type: map.type,
+        planned_subtype: map.subtype,
+        planned_sport: sport || (map.type === 'strength' ? 'strength' : map.type === 'rest' ? 'rest' : 'cardio'),
+        planned_details: `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} – ${map.details}`,
+      };
+    }
+    case 'COMEBACK': {
+      const map = [
+        {
+          type: 'strength',
+          subtype: 'light_full_body',
+          details:
+            'Lätt styrka helkropp (20–30 min).\nMycket låg belastning, fokus på kontroll och rörelsekvalitet.',
+        },
+        {
+          type: 'cardio',
+          subtype: 'easy_walk',
+          details:
+            'Promenad eller mycket lätt cardio (20–30 min).\nDu ska kunna andas helt obehindrat.',
+        },
+        {
+          type: 'rest',
+          subtype: 'full_rest',
+          details:
+            'Hel vilodag.\nPrioritera sömn och låg stress. Lätt stretching om det känns skönt.',
+        },
+        {
+          type: 'strength',
+          subtype: 'light_full_body',
+          details:
+            'Lätt styrka helkropp (20–30 min).\nUpprepa övningar som kändes bra i måndags.',
+        },
+        {
+          type: 'cardio',
+          subtype: 'very_easy',
+          details:
+            'Mycket lätt cardio (20–30 min): lugn cykel, promenad eller vattenlöpning.\nAllt ska kännas kontrollerat.',
+        },
+        {
+          type: 'outdoor',
+          subtype: 'easy_activity',
+          details:
+            'Längre promenad eller enkel utomhusaktivitet.\nTa pauser ofta och avsluta medan du fortfarande känner dig pigg.',
+        },
+        {
+          type: 'rest',
+          subtype: 'full_rest',
+          details:
+            'Hel vilodag.\nReflektera över hur kroppen känns och justera kommande vecka vid behov.',
+        },
+      ][dayIndex];
+      return {
+        ...base,
+        planned_type: map.type,
+        planned_subtype: map.subtype,
+        planned_sport: sport || (map.type === 'strength' ? 'strength' : 'rest'),
+        planned_details: `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} – ${map.details}`,
+      };
+    }
+    case 'EXPLORER': {
+      const map = [
+        {
+          type: 'strength',
+          subtype: 'explore_strength',
+          details:
+            'Styrkepass där du testar nya övningar.\nHelkropp, 30–45 min, lugnt tempo och nyfiket fokus.',
+        },
+        {
+          type: 'explore',
+          subtype: 'new_sport',
+          details:
+            'Testa något nytt: klättring, kampsport, dans eller gruppklass.\nMålet är upplevelse, inte prestation.',
+        },
+        {
+          type: 'cardio',
+          subtype: 'run_or_bike',
+          details:
+            'Löpning eller cykel (30–45 min).\nVälj det som känns mest lockande idag.',
+        },
+        {
+          type: 'strength',
+          subtype: 'explore_strength',
+          details:
+            'Styrka igen, men med andra övningar än måndagen.\nKort och lekfullt pass.',
+        },
+        {
+          type: 'swim_or_class',
+          subtype: 'group_or_swim',
+          details:
+            'Simning, gruppklass eller annan social aktivitet.\nTräning som känns mer som lek än som “jobb”.',
+        },
+        {
+          type: 'outdoor',
+          subtype: 'adventure',
+          details:
+            'Utomhusäventyr: vandring, cykeltur, paddling eller liknande.\nUtforska en ny plats om du kan.',
+        },
+        {
+          type: 'rest',
+          subtype: 'rest',
+          details:
+            'Vilodag.\nKänn efter vad du gillade mest den här veckan och vad du vill göra mer av.',
+        },
+      ][dayIndex];
+      return {
+        ...base,
+        planned_type: map.type,
+        planned_subtype: map.subtype,
+        planned_sport:
+          sport ||
+          (map.type === 'strength'
+            ? 'strength'
+            : map.type === 'rest'
+            ? 'rest'
+            : map.type === 'cardio'
+            ? 'run'
+            : 'cardio'),
+        planned_details: `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} – ${map.details}`,
+      };
+    }
+    default:
+      return makeRestEntry(date, 'Vilodag – lyssna på kroppen och ladda om.');
+  }
+}
+
+/**
+ * Generate a 7‑day schedule for a given profile starting from the provided date.
+ * The start date is treated as "day 0" (vanligen måndag).
+ */
+export function generateProfileWeeklySchedule(
+  profile: ProfileInput,
+  startDate: Date
+): ScheduleEntry[] {
+  const archetype = (profile.archetype || '').toUpperCase() as ArchetypeId | string;
+  const disciplines = profile.disciplines || [];
+
+  const entries: ScheduleEntry[] = [];
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
+
+    let preferred: string[] = [];
+    switch (archetype) {
+      case 'IRONMAN':
+        preferred = ['swim', 'bike', 'run', 'strength'];
+        break;
+      case 'COMPETITOR':
+        preferred = i === 2 ? disciplines.slice(1) : disciplines.slice(0, 1);
+        if (preferred.length === 0) preferred = disciplines;
+        if (preferred.length === 0) preferred = ['run'];
+        break;
+      case 'RECOMP':
+        preferred = i === 1 || i === 3 ? ['run', 'bike', 'walk'] : ['strength'];
+        break;
+      case 'WELLNESS':
+        preferred = ['walk', 'run', 'bike', 'swim', 'strength'];
+        break;
+      case 'COMEBACK':
+        preferred = i === 0 || i === 3 ? ['strength'] : ['walk', 'run', 'bike'];
+        break;
+      case 'EXPLORER':
+        preferred = ['run', 'bike', 'swim', 'strength', 'climb', 'martial_arts', 'dance'];
+        break;
+      default:
+        preferred = disciplines.length ? disciplines : ['run'];
+        break;
+    }
+
+    const sport = pickDiscipline(preferred, disciplines);
+    let entry = archetypeDetails(archetype, i, sport);
+    entry = { ...entry, date: fmtDate(d) };
+    entries.push(entry);
+  }
+
+  return entries;
+}
+
 const WORKOUT_DETAILS: Record<string, string> = {
   bike_long_distance:
     '60-120 min Zone 2 (140-165W). Lugnt tempo, aerob basbyggnad. RPE 3-4.',
@@ -52,10 +494,6 @@ function getLongSwimDetails(count: number): string {
   return `Kontinuerligt ${dist}m (+200m)`;
 }
 
-function formatDate(d: Date): string {
-  return d.toISOString().split('T')[0];
-}
-
 export function generateSchedule(
   startDate: Date,
   weeks: number,
@@ -80,7 +518,7 @@ export function generateSchedule(
           : WORKOUT_DETAILS.swim_technique_intervals;
 
       entries.push({
-        date: formatDate(d),
+        date: fmtDate(d),
         planned_type: 'swim',
         planned_subtype: subtype,
         planned_sport: 'swim',
@@ -101,7 +539,7 @@ export function generateSchedule(
           const subtypes = ['long_distance', 'vo2max'] as const;
           const subtype = subtypes[s.bikeTypeIndex % 2];
           entries.push({
-            date: formatDate(d),
+        date: fmtDate(d),
             planned_type: 'cardio',
             planned_subtype: subtype,
             planned_sport: 'bike',
@@ -112,7 +550,7 @@ export function generateSchedule(
           const subtypes = ['long_distance', 'vo2max'] as const;
           const subtype = subtypes[s.runTypeIndex % 2];
           entries.push({
-            date: formatDate(d),
+        date: fmtDate(d),
             planned_type: 'cardio',
             planned_subtype: subtype,
             planned_sport: 'run',
