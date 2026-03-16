@@ -14,6 +14,7 @@ import SettingsPage from "./pages/SettingsPage";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/" element={<ProtectedRoute><TodayView /></ProtectedRoute>} />
             <Route path="/today" element={<Navigate to="/" replace />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
