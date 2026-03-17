@@ -16,12 +16,19 @@ const PHASES = ['base', 'build', 'peak', 'taper'];
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { profile: userProfile, refetch: refetchProfile } = useUserProfile();
+  const { profile: userProfile, refetch: refetchProfile, updateProfile } = useUserProfile();
   const [profile, setProfile] = useState<Partial<UserProfile>>({});
   const [goal, setGoal] = useState<{ goal_name: string; goal_date: string; goal_emoji: string }>({
     goal_name: '', goal_date: '', goal_emoji: '🏁',
   });
   const [saving, setSaving] = useState(false);
+  const [savingBody, setSavingBody] = useState(false);
+  const [body, setBody] = useState<{
+    weight: string;
+    height_cm: string;
+    target_weight: string;
+    body_fat_pct: string;
+  }>({ weight: '', height_cm: '', target_weight: '', body_fat_pct: '' });
 
   useEffect(() => {
     if (!user) return;
@@ -34,8 +41,49 @@ export default function SettingsPage() {
     });
   }, [user]);
 
+  useEffect(() => {
+    if (!userProfile) return;
+    setBody({
+      weight: userProfile.weight == null ? '' : String(userProfile.weight),
+      height_cm: (userProfile as any).height_cm == null ? '' : String((userProfile as any).height_cm),
+      target_weight: userProfile.target_weight == null ? '' : String(userProfile.target_weight),
+      body_fat_pct: userProfile.body_fat_pct == null ? '' : String(userProfile.body_fat_pct),
+    });
+  }, [userProfile]);
+
   const update = (field: string, value: string | number) => {
     setProfile((p) => ({ ...p, [field]: value }));
+  };
+
+  const updateBody = (field: keyof typeof body, value: string) => {
+    setBody((b) => ({ ...b, [field]: value }));
+  };
+
+  const toNumOrNull = (v: string): number | null => {
+    const s = v.trim();
+    if (!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const saveBodyProfile = async () => {
+    if (!user) return;
+    setSavingBody(true);
+    try {
+      await updateProfile({
+        weight: toNumOrNull(body.weight),
+        target_weight: toNumOrNull(body.target_weight),
+        body_fat_pct: toNumOrNull(body.body_fat_pct),
+        height_cm: toNumOrNull(body.height_cm),
+      } as any);
+      toast.success('Sparad!');
+      await refetchProfile();
+    } catch (err) {
+      console.error('Body profile save failed:', err);
+      toast.error('Kunde inte spara. Försök igen.');
+    } finally {
+      setSavingBody(false);
+    }
   };
 
   const save = async () => {
@@ -109,6 +157,58 @@ export default function SettingsPage() {
             </Button>
           </div>
         )}
+
+        {/* Body & Health (user_profiles) */}
+        <div className="card-athletic space-y-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Kropp & hälsa</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Vikt (kg)</Label>
+              <Input
+                inputMode="decimal"
+                type="number"
+                value={body.weight}
+                onChange={(e) => updateBody('weight', e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Längd (cm)</Label>
+              <Input
+                inputMode="numeric"
+                type="number"
+                value={body.height_cm}
+                onChange={(e) => updateBody('height_cm', e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Målvikt (kg)</Label>
+              <Input
+                inputMode="decimal"
+                type="number"
+                value={body.target_weight}
+                onChange={(e) => updateBody('target_weight', e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Kroppsfett (%)</Label>
+              <Input
+                inputMode="decimal"
+                type="number"
+                value={body.body_fat_pct}
+                onChange={(e) => updateBody('body_fat_pct', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={saveBodyProfile}
+            className="w-full touch-target"
+            disabled={savingBody}
+          >
+            {savingBody && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Spara
+          </Button>
+        </div>
 
         {/* Profile */}
         <div className="card-athletic space-y-4">

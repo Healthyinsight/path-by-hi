@@ -15,6 +15,7 @@ export interface UserProfileData {
   disciplines: string[] | null;
   training_days_per_week: number | null;
   weight: number | null;
+  height_cm?: number | null;
   target_weight: number | null;
   body_fat_pct: number | null;
   has_injuries: string | null;
@@ -42,9 +43,29 @@ export function useUserProfile() {
     setLoading(false);
   };
 
+  const updateProfile = async (patch: Partial<UserProfileData>) => {
+    if (!user) throw new Error('Not authenticated');
+
+    const payload = {
+      ...patch,
+      user_id: user.id,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await (supabase as any)
+      .from('user_profiles')
+      .upsert(payload, { onConflict: 'user_id' })
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    setProfile(data as UserProfileData);
+    return data as UserProfileData;
+  };
+
   useEffect(() => {
     fetchProfile();
   }, [user]);
 
-  return { profile, loading, refetch: fetchProfile };
+  return { profile, loading, refetch: fetchProfile, updateProfile };
 }

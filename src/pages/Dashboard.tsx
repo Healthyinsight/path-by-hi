@@ -169,7 +169,13 @@ export default function Dashboard() {
   // Race readiness
   const readiness = useMemo(() => {
     if (!goal) return { training: 0, nutrition: 0, consistency: 0, bodyComp: 70, total: 0 };
-    return calculateReadiness(allSchedule, allNutrition, bodyMetrics, goal.goal_date);
+    return calculateReadiness(
+      allSchedule,
+      allNutrition,
+      bodyMetrics,
+      goal.goal_date,
+      userProfile?.target_weight ?? 79
+    );
   }, [allSchedule, allNutrition, bodyMetrics, goal]);
 
   const hasEnoughData = allSchedule.filter(s => s.date <= fmtDate(new Date())).length >= 7;
