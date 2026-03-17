@@ -6,9 +6,14 @@ import { createClient } from '@supabase/supabase-js';
 // Replace the placeholders in login helpers with your real magic-link or Supabase auth flow.
 
 async function loginAsTestUser(page: any) {
+  // IMPORTANT: This anon key is public and safe to use in test code.
+  // Replace the placeholder value below with the actual anon public key
+  // from your Supabase dashboard (Project Settings → API → anon public).
+  const supabaseAnonKey = 'PASTE_SUPABASE_ANON_KEY_HERE';
+
   const supabase = createClient(
     'https://sbfkoeozczzgyvakxozh.supabase.co',
-    process.env.VITE_SUPABASE_ANON_KEY ?? ''
+    supabaseAnonKey
   );
   const { data } = await supabase.auth.signInWithPassword({
     email: 'test@pathtracker.dev',
