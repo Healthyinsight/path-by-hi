@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="The Path Tracker">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5095AC"/>
+      <stop offset="1" stop-color="#839F8D"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="180" height="180" rx="44" ry="44" fill="url(#g)"/>
+
+  <!-- Mountains -->
+  <path d="M18 136 L72 58 L108 112 L126 94 L162 136 Z" fill="#1A2B32" opacity="0.92"/>
+  <path d="M30 136 L72 72 L96 104 L114 96 L150 136 Z" fill="#0F1D22" opacity="0.55"/>
+
+  <!-- Path -->
+  <path
+    d="M96 150 C90 126, 100 112, 116 96 C130 82, 130 70, 120 60"
+    fill="none"
+    stroke="#D4E67C"
+    stroke-width="10"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    opacity="0.95"
+  />
+  <path
+    d="M98 150 C92 126.5, 102 113, 118 98 C132 84, 132 72, 122 62"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    opacity="0.55"
+  />
+</svg>
+
