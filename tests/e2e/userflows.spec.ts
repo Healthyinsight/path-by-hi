@@ -19,23 +19,23 @@ async function loginAsTestUser(page: any) {
     email: 'test@pathtracker.dev',
     password: 'TestUser2026!',
   });
+
+  const sessionStr = JSON.stringify(data.session);
+
+  await page.addInitScript((s: string) => {
+    window.localStorage.setItem('sb-sbfkoeozczzgyvakxozh-auth-token', s);
+  }, sessionStr);
+
   await page.goto('/');
-  await page.evaluate((session: any) => {
-    if (session) {
-      localStorage.setItem(
-        'sb-sbfkoeozczzgyvakxozh-auth-token',
-        JSON.stringify(session)
-      );
-    }
-  }, data.session);
-  await page.reload();
-  await page.waitForTimeout(2000);
-  await page.waitForURL('**/*', { timeout: 5000 });
+  await page.waitForTimeout(1500);
 }
 
 test.describe('Onboarding – triathlon user', () => {
   test('should complete triathlon onboarding flow', async ({ page }) => {
     await page.goto('/onboarding');
+    // Name step
+    await page.getByPlaceholder('Ditt förnamn').fill('TestUser');
+    await page.getByRole('button', { name: /Nästa/i }).click();
     // Archetype: Triathlon
     await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
     await page.getByText('Triathlon / Ironman', { exact: false }).click();
@@ -77,6 +77,8 @@ test.describe('Onboarding – triathlon user', () => {
 test.describe('Onboarding – strength user', () => {
   test('should complete strength onboarding flow', async ({ page }) => {
     await page.goto('/onboarding');
+    await page.getByPlaceholder('Ditt förnamn').fill('TestUser');
+    await page.getByRole('button', { name: /Nästa/i }).click();
     await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
     await page.getByText('Bli starkare', { exact: false }).click();
 
@@ -100,6 +102,32 @@ test.describe('Onboarding – strength user', () => {
 });
 
 test.describe('Schedule generation', () => {
+  test.beforeAll(async () => {
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNiZmtvZW96Y3p6Z3l2YWt4b3poIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0OTIxODQsImV4cCI6MjA4OTA2ODE4NH0.BOnu8xOrjRFRCBgwbO78mW8bAW2mj8MeRtjkWIcLuMc';
+    const supabase = createClient(
+      'https://sbfkoeozczzgyvakxozh.supabase.co',
+      supabaseAnonKey
+    );
+
+    const { data } = await supabase.auth.signInWithPassword({
+      email: 'test@pathtracker.dev',
+      password: 'TestUser2026!',
+    });
+
+    const user = data.user;
+    if (!user) throw new Error('Could not sign in test user for profile setup');
+
+    await supabase.from('user_profiles').upsert(
+      {
+        user_id: user.id,
+        archetype: 'triathlon',
+        disciplines: ['swim', 'bike', 'run'],
+        onboarding_completed: true,
+      },
+      { onConflict: 'user_id' }
+    );
+  });
+
   test('should regenerate schedule with at least one non-rest day', async ({ page }) => {
     await loginAsTestUser(page);
 
