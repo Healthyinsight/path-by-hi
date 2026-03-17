@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { BottomNav } from '@/components/BottomNav';
-import { generateSchedule, DEFAULT_ROTATOR } from '@/lib/scheduleEngine';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { generateProfileWeeklySchedule } from '@/lib/scheduleEngine';
 import {
   Check, Bike, Dumbbell, Waves, Target, Coffee,
   ChevronLeft, ChevronRight, RefreshCw,
@@ -57,6 +58,7 @@ function fmtShortDate(d: Date): string {
 
 export default function Schedule() {
   const { user } = useAuth();
+  const { profile } = useUserProfile();
   const [schedule, setSchedule] = useState<any[]>([]);
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState<string>(fmtDate(new Date()));
@@ -77,27 +79,60 @@ export default function Schedule() {
 
   const seedSchedule = useCallback(async () => {
     if (!user) return;
+    if (!profile) {
+      console.warn('Profile not loaded – skipping initial schedule seed');
+      return;
+    }
     setGenerating(true);
-    const { entries } = generateSchedule(new Date(), 4, { ...DEFAULT_ROTATOR });
-    const rows = entries.map((e) => ({ ...e, user_id: user.id }));
+    const base = new Date();
+    const weeks = 4;
+    const profileInput = {
+      archetype: profile.archetype,
+      disciplines: profile.disciplines || [],
+      goal_date: profile.goal_date,
+    };
+    const allEntries: any[] = [];
+    for (let i = 0; i < weeks; i++) {
+      const start = new Date(base);
+      start.setDate(base.getDate() + i * 7);
+      allEntries.push(...generateProfileWeeklySchedule(profileInput, start));
+    }
+    const rows = allEntries.map((e) => ({ ...e, user_id: user.id }));
     const { error } = await supabase.from('training_schedule').insert(rows);
     if (error) { toast.error('Kunde inte generera schema'); }
     else { toast.success('4-veckors schema genererat! 🎉'); await loadSchedule(); }
     setGenerating(false);
-  }, [user, loadSchedule]);
+  }, [user, profile, loadSchedule]);
 
   const regenerateSchedule = useCallback(async () => {
     if (!user) return;
+    if (!profile) {
+      console.warn('Profile not loaded – skipping schedule regenerate');
+      toast.error('Profil saknas. Kör klart quizen först.');
+      return;
+    }
     setGenerating(true);
     const today = fmtDate(new Date());
     await supabase.from('training_schedule').delete().eq('user_id', user.id).gte('date', today).eq('completed', false);
-    const { entries } = generateSchedule(new Date(), 4, { ...DEFAULT_ROTATOR });
-    const rows = entries.map((e) => ({ ...e, user_id: user.id }));
+    const base = new Date();
+    const weeks = 4;
+    const profileInput = {
+      archetype: profile.archetype,
+      disciplines: profile.disciplines || [],
+      goal_date: profile.goal_date,
+    };
+    const allEntries: any[] = [];
+    for (let i = 0; i < weeks; i++) {
+      const start = new Date(base);
+      start.setDate(base.getDate() + i * 7);
+      allEntries.push(...generateProfileWeeklySchedule(profileInput, start));
+    }
+    const rows = allEntries.map((e) => ({ ...e, user_id: user.id }));
     const { error } = await supabase.from('training_schedule').insert(rows);
     if (error) { toast.error('Kunde inte generera schema'); }
     else { toast.success('Nytt 4-veckors schema genererat! 🎉'); await loadSchedule(); }
     setGenerating(false);
-  }, [user, loadSchedule]);
+  }, [user, profile, loadSchedule]);
 
   useEffect(() => { loadSchedule(); }, [loadSchedule]);
 

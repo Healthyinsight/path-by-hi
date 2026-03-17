@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Check, Calendar, ChefHat, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
-import { generateSchedule, DEFAULT_ROTATOR } from '@/lib/scheduleEngine';
+import { generateProfileWeeklySchedule } from '@/lib/scheduleEngine';
 import { getNutritionTargets } from '@/lib/nutritionEngine';
 
 /* ---- helpers ---- */
@@ -156,14 +156,39 @@ export default function TodayView() {
 
   const generateNewSchedule = async () => {
     if (!user) return;
-    const { entries } = generateSchedule(new Date(), 4, { ...DEFAULT_ROTATOR });
-    const rows = entries.map((e) => ({ ...e, user_id: user.id }));
+    if (!profile) {
+      console.warn('Profile not loaded – skipping schedule generation');
+      toast.error('Profil saknas. Kör klart quizen först.');
+      return;
+    }
+
+    const base = new Date();
+    const weeks = 4;
+    const profileInput = {
+      archetype: profile.archetype,
+      disciplines: profile.disciplines || [],
+      goal_date: profile.goal_date,
+    };
+
+    const allEntries: any[] = [];
+    for (let i = 0; i < weeks; i++) {
+      const start = new Date(base);
+      start.setDate(base.getDate() + i * 7);
+      allEntries.push(...generateProfileWeeklySchedule(profileInput, start));
+    }
+
+    const rows = allEntries.map((e) => ({ ...e, user_id: user.id }));
     const { error } = await supabase.from('training_schedule').insert(rows);
-    if (error) toast.error('Kunde inte generera schema');
-    else {
+    if (error) {
+      toast.error('Kunde inte generera schema');
+    } else {
       toast.success('4-veckors schema genererat! 🎉');
       const { data } = await supabase
-        .from('training_schedule').select('*').eq('user_id', user.id).eq('date', today).maybeSingle();
+        .from('training_schedule')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .maybeSingle();
       setWorkout(data);
     }
   };
