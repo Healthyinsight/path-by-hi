@@ -423,7 +423,27 @@ export function generateProfileWeeklySchedule(
   profile: ProfileInput,
   startDate: Date
 ): ScheduleEntry[] {
-  const archetype = (profile.archetype || '').toUpperCase() as ArchetypeId | string;
+  const rawArch = (profile.archetype || '').toLowerCase();
+  const archetype: ArchetypeId | string = (() => {
+    switch (rawArch) {
+      case 'triathlon':
+      case 'ironman':
+        return 'IRONMAN';
+      case 'running':
+        return 'COMPETITOR';
+      case 'strength':
+      case 'weight_loss':
+        return 'RECOMP';
+      case 'wellness':
+        return 'WELLNESS';
+      case 'comeback':
+        return 'COMEBACK';
+      case 'explorer':
+        return 'EXPLORER';
+      default:
+        return rawArch.toUpperCase();
+    }
+  })();
   const disciplines = profile.disciplines || [];
 
   const entries: ScheduleEntry[] = [];

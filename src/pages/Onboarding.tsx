@@ -873,9 +873,15 @@ function DatePickerField({ date, onSelect }: { date: Date | undefined; onSelect:
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
-        <Calendar mode="single" selected={date} onSelect={onSelect}
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={onSelect}
+          weekStartsOn={1}
           disabled={d => d < new Date()}
-          initialFocus className={cn("p-3 pointer-events-auto")} />
+          initialFocus
+          className={cn("p-3 pointer-events-auto")}
+        />
       </PopoverContent>
     </Popover>
   );
