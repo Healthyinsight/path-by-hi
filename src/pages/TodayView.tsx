@@ -155,9 +155,12 @@ export default function TodayView() {
   };
 
   const generateNewSchedule = async () => {
-    if (!user) return;
+    if (!user) {
+      console.warn('[TodayView] generateNewSchedule: no user');
+      return;
+    }
     if (!profile) {
-      console.warn('Profile not loaded – skipping schedule generation');
+      console.warn('[TodayView] generateNewSchedule: profile not loaded');
       toast.error('Profil saknas. Kör klart quizen först.');
       return;
     }
@@ -169,6 +172,12 @@ export default function TodayView() {
       disciplines: profile.disciplines || [],
       goal_date: profile.goal_date,
     };
+
+    console.log('[TodayView] generateNewSchedule', {
+      userId: user.id,
+      profile,
+      profileInput,
+    });
 
     const allEntries: any[] = [];
     for (let i = 0; i < weeks; i++) {

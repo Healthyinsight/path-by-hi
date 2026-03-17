@@ -58,6 +58,8 @@ export function RaceSearchField({
   };
 
   const handleSelect = (race: Race) => {
+    // Debug for onboarding race selection flow
+    console.log('[RaceSearchField] onSelect', { race });
     onSelect(race);
     setOpen(false);
   };

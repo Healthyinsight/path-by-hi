@@ -446,6 +446,15 @@ export function generateProfileWeeklySchedule(
   })();
   const disciplines = profile.disciplines || [];
 
+  // Debug logging to verify profile-driven schedule generation
+  // eslint-disable-next-line no-console
+  console.log('[scheduleEngine] generateProfileWeeklySchedule', {
+    rawArch,
+    archetype,
+    disciplines,
+    startDate: fmtDate(startDate),
+  });
+
   const entries: ScheduleEntry[] = [];
 
   for (let i = 0; i < 7; i++) {
