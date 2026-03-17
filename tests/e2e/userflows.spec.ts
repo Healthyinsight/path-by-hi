@@ -1,19 +1,35 @@
 import { test, expect } from '@playwright/test';
+import { createClient } from '@supabase/supabase-js';
 
 // NOTE:
 // These flows assume either a dedicated test environment or a mocked auth/login helper.
 // Replace the placeholders in login helpers with your real magic-link or Supabase auth flow.
 
-async function loginWithMagicLink(page: any) {
-  // TODO: Implement real login (magic link, Supabase auth, or test user cookie)
-  // For now, this is a placeholder so tests are easy to wire up later.
-  console.warn('[e2e] loginWithMagicLink is a placeholder – implement real auth before running tests.');
+async function loginAsTestUser(page: any) {
+  const supabase = createClient(
+    'https://sbfkoeozczzgyvakxozh.supabase.co',
+    process.env.VITE_SUPABASE_ANON_KEY ?? ''
+  );
+  const { data } = await supabase.auth.signInWithPassword({
+    email: 'test@pathtracker.dev',
+    password: 'TestUser2026!',
+  });
+  await page.goto('/');
+  await page.evaluate((session: any) => {
+    if (session) {
+      localStorage.setItem(
+        'sb-sbfkoeozczzgyvakxozh-auth-token',
+        JSON.stringify(session)
+      );
+    }
+  }, data.session);
+  await page.reload();
+  await page.waitForTimeout(800);
 }
 
 test.describe('Onboarding – triathlon user', () => {
   test('should complete triathlon onboarding flow', async ({ page }) => {
-    await page.goto('/');
-    await loginWithMagicLink(page);
+    await loginAsTestUser(page);
 
     // Archetype: Triathlon
     await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
@@ -55,8 +71,7 @@ test.describe('Onboarding – triathlon user', () => {
 
 test.describe('Onboarding – strength user', () => {
   test('should complete strength onboarding flow', async ({ page }) => {
-    await page.goto('/');
-    await loginWithMagicLink(page);
+    await loginAsTestUser(page);
 
     await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
     await page.getByText('Bli starkare', { exact: false }).click();
@@ -82,8 +97,7 @@ test.describe('Onboarding – strength user', () => {
 
 test.describe('Schedule generation', () => {
   test('should regenerate schedule with at least one non-rest day', async ({ page }) => {
-    await page.goto('/');
-    await loginWithMagicLink(page);
+    await loginAsTestUser(page);
 
     await page.goto('/schedule');
     await page.getByRole('button', { name: /Generera nytt/i }).click();
@@ -104,8 +118,7 @@ test.describe('Schedule generation', () => {
 
 test.describe('TodayView – generate schedule button', () => {
   test('should generate schedule when missing', async ({ page }) => {
-    await page.goto('/');
-    await loginWithMagicLink(page);
+    await loginAsTestUser(page);
 
     // If no workout card exists, use generate button
     const noWorkoutText = page.getByText('Inget pass planerat idag', { exact: false });
@@ -126,8 +139,7 @@ test.describe('TodayView – generate schedule button', () => {
 
 test.describe('Settings – save body metrics', () => {
   test('should save weight successfully', async ({ page }) => {
-    await page.goto('/');
-    await loginWithMagicLink(page);
+    await loginAsTestUser(page);
 
     await page.goto('/settings');
 
