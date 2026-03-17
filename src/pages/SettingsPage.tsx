@@ -58,8 +58,17 @@ export default function SettingsPage() {
   };
 
   const retakeQuiz = async () => {
-    if (!user) return;
-    await (supabase as any).from('user_profiles').update({ onboarding_completed: false }).eq('user_id', user.id);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+    const { error } = await (supabase as any)
+      .from('user_profiles')
+      .update({ onboarding_completed: false })
+      .eq('user_id', authUser.id);
+    if (error) {
+      console.error('retakeQuiz failed:', error);
+      toast.error('Kunde inte återställa quiz. Försök igen.');
+      return;
+    }
     navigate('/onboarding', { replace: true });
   };
 

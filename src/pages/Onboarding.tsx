@@ -302,40 +302,62 @@ export default function Onboarding() {
       return;
     }
 
-    const profileData = buildProfileData();
-    // Override user_id from verified auth
-    profileData.user_id = authUser.id;
+    try {
+      const profileData = buildProfileData();
+      // Override user_id from verified auth
+      profileData.user_id = authUser.id;
 
-    const { error: profileError } = await (supabase as any)
-      .from('user_profiles')
-      .upsert({
-        ...profileData,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
+      const { error: profileError } = await (supabase as any)
+        .from('user_profiles')
+        .upsert(
+          {
+            ...profileData,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        );
 
-    if (profileError) {
-      console.error('Profile save error:', profileError);
+      if (profileError) {
+        console.error('Profile save error:', profileError);
+        toast.error('Kunde inte spara profilen. Försök igen.');
+        return;
+      }
+
+      toast.success('Profil sparad!');
+
+      // Also save to user_goals for mountain timeline
+      const { error: goalsError } = await supabase.from('user_goals').upsert(
+        {
+          user_id: authUser.id,
+          goal_name: profileData.goal_name || 'Mitt mål',
+          goal_date: profileData.goal_date,
+          goal_emoji: profileData.goal_emoji,
+          disciplines: profileData.disciplines,
+        },
+        { onConflict: 'user_id' }
+      );
+      if (goalsError) {
+        console.error('Goal save error:', goalsError);
+        toast.error('Kunde inte spara mål.');
+      }
+
+      // Update users table with name
+      const { error: nameError } = await supabase
+        .from('users')
+        .update({ name: profileData.display_name })
+        .eq('id', authUser.id);
+      if (nameError) {
+        console.error('Name update error:', nameError);
+        toast.error('Kunde inte uppdatera namn.');
+      }
+
+      navigate('/', { replace: true });
+    } catch (err) {
+      console.error('handleFinish failed:', err);
       toast.error('Kunde inte spara profilen. Försök igen.');
+    } finally {
       setSaving(false);
-      return;
     }
-
-    toast.success('Profil sparad!');
-
-    // Also save to user_goals for mountain timeline
-    await supabase.from('user_goals').upsert({
-      user_id: authUser.id,
-      goal_name: profileData.goal_name || 'Mitt mål',
-      goal_date: profileData.goal_date,
-      goal_emoji: profileData.goal_emoji,
-      disciplines: profileData.disciplines,
-    }, { onConflict: 'user_id' });
-
-    // Update users table with name
-    await supabase.from('users').update({ name: profileData.display_name }).eq('id', authUser.id);
-
-    setSaving(false);
-    navigate('/', { replace: true });
   };
 
   // Summary data

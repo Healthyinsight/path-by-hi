@@ -19,8 +19,19 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
       .select('onboarding_completed')
       .eq('user_id', user.id)
       .single()
-      .then(({ data }: any) => {
+      .then(({ data, error }: any) => {
+        if (error) {
+          console.error('Onboarding check failed:', error);
+          setOnboardingCompleted(true);
+          setCheckingOnboarding(false);
+          return;
+        }
         setOnboardingCompleted(data?.onboarding_completed ?? false);
+        setCheckingOnboarding(false);
+      })
+      .catch((err: any) => {
+        console.error('Onboarding check failed:', err);
+        setOnboardingCompleted(true);
         setCheckingOnboarding(false);
       });
   }, [user, authLoading]);
