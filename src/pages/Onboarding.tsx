@@ -13,6 +13,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { RaceSearchField } from '@/components/RaceSearchField';
 
 type Archetype = 'triathlon' | 'running' | 'strength' | 'weight_loss' | 'wellness' | 'custom';
 
@@ -25,12 +26,14 @@ interface QuizState {
   has_race: boolean | null;
   race_name: string;
   race_date: Date | undefined;
+  race_autofilled: boolean;
   tri_level: string;
   // running
   run_distance: string;
   run_has_race: boolean | null;
   run_race_name: string;
   run_race_date: Date | undefined;
+  run_race_autofilled: boolean;
   run_frequency: string;
   // strength
   equipment: string;
@@ -55,8 +58,8 @@ const initialState: QuizState = {
   display_name: '',
   trail_name: '',
   archetype: '',
-  tri_distance: '', has_race: null, race_name: '', race_date: undefined, tri_level: '',
-  run_distance: '', run_has_race: null, run_race_name: '', run_race_date: undefined, run_frequency: '',
+  tri_distance: '', has_race: null, race_name: '', race_date: undefined, race_autofilled: false, tri_level: '',
+  run_distance: '', run_has_race: null, run_race_name: '', run_race_date: undefined, run_race_autofilled: false, run_frequency: '',
   equipment: '', has_injuries: '', injury_text: '', strength_days: 4,
   weight: '', target_weight: '', wl_activity: '',
   wellness_focuses: [], wellness_activity: '',
@@ -447,13 +450,31 @@ export default function Onboarding() {
             {state.has_race && (
               <div className="mt-4 space-y-3">
                 <div className="space-y-1">
-                  <Label className="text-sm">Loppets namn</Label>
-                  <Input value={state.race_name} onChange={e => set('race_name', e.target.value)}
-                    placeholder="t.ex. Ironman 70.3 Jönköping" className="h-[52px] rounded-lg" />
+                  <Label className="text-sm">Sök bland populära lopp eller skriv eget</Label>
+                  <RaceSearchField
+                    value={state.race_name}
+                    primaryType="triathlon"
+                    onSelect={(race) => {
+                      set('race_name', race.name);
+                      set('race_date', new Date(race.date));
+                      set('race_autofilled', true);
+                      setTimeout(goNext, 300);
+                    }}
+                    onManualChange={(name) => {
+                      set('race_name', name);
+                      set('race_autofilled', false);
+                    }}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm">Datum</Label>
-                  <DatePickerField date={state.race_date} onSelect={d => set('race_date', d)} />
+                  {state.race_autofilled && state.race_date ? (
+                    <p className="text-sm text-muted-foreground">
+                      ✓ {state.race_name} – {format(state.race_date, 'PPP', { locale: sv })}
+                    </p>
+                  ) : (
+                    <DatePickerField date={state.race_date} onSelect={d => set('race_date', d)} />
+                  )}
                 </div>
               </div>
             )}
@@ -502,13 +523,31 @@ export default function Onboarding() {
             {state.run_has_race && (
               <div className="mt-4 space-y-3">
                 <div className="space-y-1">
-                  <Label className="text-sm">Loppets namn</Label>
-                  <Input value={state.run_race_name} onChange={e => set('run_race_name', e.target.value)}
-                    placeholder="t.ex. Stockholm Marathon" className="h-[52px] rounded-lg" />
+                  <Label className="text-sm">Sök bland populära lopp eller skriv eget</Label>
+                  <RaceSearchField
+                    value={state.run_race_name}
+                    primaryType="running"
+                    onSelect={(race) => {
+                      set('run_race_name', race.name);
+                      set('run_race_date', new Date(race.date));
+                      set('run_race_autofilled', true);
+                      setTimeout(goNext, 300);
+                    }}
+                    onManualChange={(name) => {
+                      set('run_race_name', name);
+                      set('run_race_autofilled', false);
+                    }}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm">Datum</Label>
-                  <DatePickerField date={state.run_race_date} onSelect={d => set('run_race_date', d)} />
+                  {state.run_race_autofilled && state.run_race_date ? (
+                    <p className="text-sm text-muted-foreground">
+                      ✓ {state.run_race_name} – {format(state.run_race_date, 'PPP', { locale: sv })}
+                    </p>
+                  ) : (
+                    <DatePickerField date={state.run_race_date} onSelect={d => set('run_race_date', d)} />
+                  )}
                 </div>
               </div>
             )}
