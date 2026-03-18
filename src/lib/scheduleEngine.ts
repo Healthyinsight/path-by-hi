@@ -427,6 +427,7 @@ export function generateProfileWeeklySchedule(
   const archetype: ArchetypeId | string = (() => {
     switch (rawArch) {
       case 'triathlon':
+      case 'triathlete':
       case 'ironman':
         return 'IRONMAN';
       case 'running':
