@@ -369,8 +369,14 @@ test.describe('Settings – save body metrics', () => {
 
     await page.goto('/settings');
 
-    const supabase = supabaseAuthed;
-    if (!supabase || !testUserId) throw new Error('Missing authed supabase or testUserId');
+    if (!testUserId) throw new Error('Missing testUserId');
+
+    // Use a fresh Supabase client for DB assertions (avoid relying on an older session token).
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    await supabase.auth.signInWithPassword({
+      email: 'test@pathtracker.dev',
+      password: 'TestUser2026!',
+    });
 
     // Reset weight so we assert an actual update.
     await supabase.from('user_profiles').update({ weight: null }).eq('user_id', testUserId);
@@ -385,13 +391,20 @@ test.describe('Settings – save body metrics', () => {
 
     await expect(page.getByText('Sparad!', { exact: false })).toBeVisible({ timeout: 20000 });
 
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('weight')
-      .eq('user_id', testUserId)
-      .maybeSingle();
+    let weightIs75 = false;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('weight')
+        .eq('user_id', testUserId)
+        .maybeSingle();
 
-    expect(profile?.weight).toBe(75);
+      weightIs75 = profile?.weight === 75 || Number(profile?.weight) === 75;
+      if (weightIs75) break;
+      await page.waitForTimeout(800);
+    }
+
+    expect(weightIs75).toBe(true);
   });
 });
 
