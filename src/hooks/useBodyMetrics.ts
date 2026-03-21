@@ -82,15 +82,30 @@ export function useBodyMetrics(syncProfile?: () => Promise<void>) {
     }
 
     setSaving(true);
-    const { error: e } = await upsertProfile(user.id, patch);
+    const { data, error: e } = await upsertProfile(user.id, patch);
     setSaving(false);
 
     if (e) {
+      console.error('[useBodyMetrics] upsertProfile failed', {
+        userId: user.id,
+        patch,
+        error: e,
+        message: e.message,
+        details: e.details,
+        hint: e.hint,
+        code: e.code,
+      });
+      toast.error(e.message || 'Kunde inte spara. Försök igen.');
+      return false;
+    }
+
+    if (!data) {
+      console.error('[useBodyMetrics] upsertProfile returned no row', { userId: user.id, patch });
       toast.error('Kunde inte spara. Försök igen.');
       return false;
     }
 
-    toast.success('Kroppsmått sparade!');
+    toast.success('Sparad!');
     await refetch();
     if (syncProfile) await syncProfile();
     return true;
