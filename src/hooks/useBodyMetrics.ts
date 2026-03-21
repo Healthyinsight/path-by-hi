@@ -76,6 +76,8 @@ export function useBodyMetrics(syncProfile?: () => Promise<void>) {
       patch.target_weight !== undefined ||
       patch.body_fat_pct !== undefined;
 
+    console.log('[useBodyMetrics] saveBodyMetrics called', { userId: user.id, patch });
+
     if (!has) {
       toast.error('Fyll i minst ett kroppsmått.');
       return false;

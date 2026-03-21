@@ -39,6 +39,8 @@ export default function SettingsPage() {
   }>({ weight: '', height_cm: '', target_weight: '', body_fat_pct: '' });
 
   const bodyRef = useRef(body);
+  /** Förhindrar att refetch av profil (t.ex. efter "Spara inställningar") skriver över ifyllda Kropp & hälsa-fält. */
+  const bodyDirtyRef = useRef(false);
   useEffect(() => {
     bodyRef.current = body;
   }, [body]);
@@ -62,6 +64,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!userProfile) return;
+    if (bodyDirtyRef.current) return;
     setBody({
       weight: userProfile.weight == null ? '' : String(userProfile.weight),
       height_cm: userProfile.height_cm == null ? '' : String(userProfile.height_cm),
@@ -75,10 +78,21 @@ export default function SettingsPage() {
   };
 
   const updateBody = (field: keyof typeof body, value: string) => {
+    bodyDirtyRef.current = true;
     setBody((b) => ({ ...b, [field]: value }));
   };
 
-  const saveBodyProfile = () => saveBodyMetrics(bodyRef.current);
+  const saveBodyProfile = async () => {
+    const b = bodyRef.current;
+    console.log('[SettingsPage] body save clicked', {
+      weight: b.weight,
+      heightCm: b.height_cm,
+      bodyFatPct: b.body_fat_pct,
+    });
+    const ok = await saveBodyMetrics(b);
+    console.log('[SettingsPage] body save result', { ok });
+    if (ok) bodyDirtyRef.current = false;
+  };
 
   const save = async () => {
     if (!user) return;
