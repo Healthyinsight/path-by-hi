@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUserProfile } from '@/hooks/useUserProfile';
-import { supabase } from '@/integrations/supabase/client';
+import { useProfile } from '@/hooks/useProfile';
+import { useSchedule } from '@/hooks/useSchedule';
+import { getNutritionPlan } from '@/services/nutritionService';
 import { BottomNav } from '@/components/BottomNav';
 import { RecoveryRing } from '@/components/RecoveryRing';
 import { RaceCountdownArc } from '@/components/RaceCountdownArc';
@@ -15,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Check, Calendar, ChefHat, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
-import { generateProfileWeeklySchedule } from '@/lib/scheduleEngine';
 import { getNutritionTargets } from '@/lib/nutritionEngine';
 
 /* ---- helpers ---- */
@@ -107,33 +107,29 @@ const cardVariant = (i: number) => ({
 /* ---- component ---- */
 export default function TodayView() {
   const { user } = useAuth();
-  const { profile } = useUserProfile();
+  const { profile } = useProfile();
   const navigate = useNavigate();
-  const today = fmtDate(new Date());
+  const {
+    schedule,
+    loading: loadingWorkout,
+    regenerate,
+    markWorkoutCompleted,
+    today,
+  } = useSchedule();
 
-  const [workout, setWorkout] = useState<any | null>(null);
+  const workout = schedule[0] ?? null;
+
   const [nutrition, setNutrition] = useState<any | null>(null);
-  const [loadingWorkout, setLoadingWorkout] = useState(true);
   const [loadingNutrition, setLoadingNutrition] = useState(true);
 
-  const { insights, loading: loadingInsights } = useInsights();
+  const { insights, loading: loadingInsights } = useInsights(profile);
   const [showAllInsights, setShowAllInsights] = useState(false);
   const recovery = useMemo(() => getTodayRecovery(), []);
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data } = await supabase
-        .from('training_schedule').select('*').eq('user_id', user.id).eq('date', today).maybeSingle();
-      setWorkout(data);
-      setLoadingWorkout(false);
-    })();
-  }, [user, today]);
 
   useEffect(() => {
     if (!user) return;
-    (async () => {
-      const { data } = await supabase
-        .from('nutrition_plan').select('*').eq('user_id', user.id).eq('date', today).maybeSingle();
+    void (async () => {
+      const { data } = await getNutritionPlan(user.id, today);
       setNutrition(data);
       setLoadingNutrition(false);
     })();
@@ -141,16 +137,12 @@ export default function TodayView() {
 
   const markCompleted = async () => {
     if (!workout) return;
-    const { error } = await supabase
-      .from('training_schedule').update({ completed: true }).eq('id', workout.id);
-    if (error) {
-      toast.error('Kunde inte uppdatera');
-    } else {
+    const ok = await markWorkoutCompleted(workout.id);
+    if (ok) {
       fireConfetti();
       const streak = recovery.currentStreak + 1;
       const milestoneMsg = getStreakMessage(streak);
       toast.success(milestoneMsg || `🎉 Bra jobbat! ${streak} dagar i rad!`);
-      setWorkout({ ...workout, completed: true });
     }
   };
 
@@ -165,41 +157,16 @@ export default function TodayView() {
       return;
     }
 
-    const base = new Date();
-    const weeks = 4;
-    const profileInput = {
-      archetype: profile.archetype,
-      disciplines: profile.disciplines || [],
-      goal_date: profile.goal_date,
-    };
-
     console.log('[TodayView] generateNewSchedule', {
       userId: user.id,
       profile,
-      profileInput,
     });
 
-    const allEntries: any[] = [];
-    for (let i = 0; i < weeks; i++) {
-      const start = new Date(base);
-      start.setDate(base.getDate() + i * 7);
-      allEntries.push(...generateProfileWeeklySchedule(profileInput, start));
-    }
-
-    const rows = allEntries.map((e) => ({ ...e, user_id: user.id }));
-    const { error } = await supabase.from('training_schedule').insert(rows);
-    if (error) {
-      toast.error('Kunde inte generera schema');
-    } else {
-      toast.success('4-veckors schema genererat! 🎉');
-      const { data } = await supabase
-        .from('training_schedule')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', today)
-        .maybeSingle();
-      setWorkout(data);
-    }
+    await regenerate({
+      archetype: profile.archetype,
+      disciplines: profile.disciplines || [],
+      goal_date: profile.goal_date,
+    });
   };
 
   const targets = workout ? getNutritionTargets(workout.planned_type, workout.planned_subtype) : null;

@@ -1,28 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useUserProfile } from '@/hooks/useUserProfile';
+import { useProfile } from '@/hooks/useProfile';
+import { useGoals } from '@/hooks/useGoals';
+import { useBodyMetrics } from '@/hooks/useBodyMetrics';
+import { usePersistSettings } from '@/hooks/usePersistSettings';
+import { getUser, type User } from '@/services/usersService';
+import { upsertProfile } from '@/services/profileService';
+import { getCurrentUserId, toFiniteNumber } from '@/services/utils';
 import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LogOut, Watch, Check, Loader2, Mail, Target, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import type { UserProfile } from '@/types/database';
 
 const PHASES = ['base', 'build', 'peak', 'taper'];
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { profile: userProfile, refetch: refetchProfile } = useUserProfile();
-  const [profile, setProfile] = useState<Partial<UserProfile>>({});
+  const { profile: userProfile, refetch: refetchProfile } = useProfile();
+  const { goals, refetch: refetchGoals } = useGoals();
+  const { saveBodyMetrics, saving: savingBody } = useBodyMetrics(refetchProfile);
+  const { saveSettings, saving } = usePersistSettings({ refetchProfile, refetchGoals });
+
+  const [trainingUser, setTrainingUser] = useState<Partial<User>>({});
   const [goal, setGoal] = useState<{ goal_name: string; goal_date: string; goal_emoji: string }>({
-    goal_name: '', goal_date: '', goal_emoji: '🏁',
+    goal_name: '',
+    goal_date: '',
+    goal_emoji: '🏁',
   });
-  const [saving, setSaving] = useState(false);
-  const [savingBody, setSavingBody] = useState(false);
   const [body, setBody] = useState<{
     weight: string;
     height_cm: string;
@@ -30,180 +38,116 @@ export default function SettingsPage() {
     body_fat_pct: string;
   }>({ weight: '', height_cm: '', target_weight: '', body_fat_pct: '' });
 
+  const bodyRef = useRef(body);
+  useEffect(() => {
+    bodyRef.current = body;
+  }, [body]);
+
   useEffect(() => {
     if (!user) return;
-    Promise.all([
-      supabase.from('users').select('*').eq('id', user.id).single(),
-      supabase.from('user_goals').select('*').eq('user_id', user.id).single(),
-    ]).then(([profileRes, goalRes]) => {
-      if (profileRes.data) setProfile(profileRes.data);
-      if (goalRes.data) setGoal({ goal_name: goalRes.data.goal_name, goal_date: goalRes.data.goal_date, goal_emoji: goalRes.data.goal_emoji || '🏁' });
+    void getUser(user.id).then(({ data }) => {
+      if (data) setTrainingUser(data);
     });
   }, [user]);
+
+  useEffect(() => {
+    if (goals) {
+      setGoal({
+        goal_name: goals.goal_name,
+        goal_date: goals.goal_date,
+        goal_emoji: goals.goal_emoji || '🏁',
+      });
+    }
+  }, [goals]);
 
   useEffect(() => {
     if (!userProfile) return;
     setBody({
       weight: userProfile.weight == null ? '' : String(userProfile.weight),
-      height_cm: (userProfile as any).height_cm == null ? '' : String((userProfile as any).height_cm),
+      height_cm: userProfile.height_cm == null ? '' : String(userProfile.height_cm),
       target_weight: userProfile.target_weight == null ? '' : String(userProfile.target_weight),
       body_fat_pct: userProfile.body_fat_pct == null ? '' : String(userProfile.body_fat_pct),
     });
   }, [userProfile]);
 
-  const update = (field: string, value: string | number) => {
-    setProfile((p) => ({ ...p, [field]: value }));
+  const updateTraining = (field: keyof User | string, value: string | number) => {
+    setTrainingUser((p) => ({ ...p, [field]: value }));
   };
 
   const updateBody = (field: keyof typeof body, value: string) => {
     setBody((b) => ({ ...b, [field]: value }));
   };
 
-  const toNumOrNull = (v: string): number | null => {
-    const s = v.trim();
-    if (!s) return null;
-    const n = Number(s);
-    return Number.isFinite(n) ? n : null;
-  };
-
-  /** Undvik NaN i Supabase-uppdateringar när Träningsdata-fält är tomma/ofyllda. */
-  const toFiniteNumber = (v: unknown): number | null => {
-    if (v === '' || v === undefined || v === null) return null;
-    const n = typeof v === 'number' ? v : Number(v);
-    return Number.isFinite(n) ? n : null;
-  };
-
-  const saveBodyProfile = async () => {
-    if (!user) return;
-    setSavingBody(true);
-    try {
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
-      if (authErr || !authData?.user) {
-        toast.error('Kunde inte verifiera inloggning.');
-        return;
-      }
-      const uid = authData.user.id;
-
-      // Uppdatera bara fält användaren faktiskt fyllt i — skicka inte null för tomma inputs
-      // (annars nollställs t.ex. vikt när man bara sparar längd, och tvärtom).
-      const patch: Record<string, unknown> = {
-        updated_at: new Date().toISOString(),
-      };
-      if (body.weight.trim() !== '') patch.weight = toNumOrNull(body.weight);
-      if (body.height_cm.trim() !== '') patch.height_cm = toNumOrNull(body.height_cm);
-      if (body.target_weight.trim() !== '') patch.target_weight = toNumOrNull(body.target_weight);
-      if (body.body_fat_pct.trim() !== '') patch.body_fat_pct = toNumOrNull(body.body_fat_pct);
-
-      const hasBodyMetric = Object.keys(patch).some((k) => k !== 'updated_at');
-      if (!hasBodyMetric) {
-        toast.error('Fyll i minst ett kroppsmått.');
-        return;
-      }
-
-      const { error: upErr } = await (supabase as any).from('user_profiles').update(patch).eq('user_id', uid);
-      if (upErr) throw upErr;
-
-      toast.success('Sparad!');
-      await refetchProfile();
-    } catch (err) {
-      console.error('Body profile save failed:', err);
-      toast.error('Kunde inte spara. Försök igen.');
-    } finally {
-      setSavingBody(false);
-    }
-  };
+  const saveBodyProfile = () => saveBodyMetrics(bodyRef.current);
 
   const save = async () => {
     if (!user) return;
-    setSaving(true);
-    try {
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
-      if (authErr || !authData?.user) {
-        toast.error('Kunde inte verifiera inloggning.');
-        return;
-      }
-      const uid = authData.user.id;
 
-      // user_goals.goal_date is NOT NULL — empty string fails the upsert; fall back to profil / default.
-      const goalDateRaw = typeof goal.goal_date === 'string' ? goal.goal_date.trim() : '';
-      const profileGoalDate =
-        typeof userProfile?.goal_date === 'string' ? userProfile.goal_date.trim() : '';
-      const goalDate =
-        goalDateRaw !== ''
-          ? goalDateRaw
-          : profileGoalDate !== ''
-            ? profileGoalDate
-            : new Date(Date.now() + 86400000 * 180).toISOString().split('T')[0];
+    const goalDateRaw = typeof goal.goal_date === 'string' ? goal.goal_date.trim() : '';
+    const profileGoalDate =
+      typeof userProfile?.goal_date === 'string' ? userProfile.goal_date.trim() : '';
+    const goalDate =
+      goalDateRaw !== ''
+        ? goalDateRaw
+        : profileGoalDate !== ''
+          ? profileGoalDate
+          : new Date(Date.now() + 86400000 * 180).toISOString().split('T')[0];
 
-      const goalName = typeof goal.goal_name === 'string' ? goal.goal_name.trim() : '';
-      const goalEmoji =
-        typeof goal.goal_emoji === 'string' && goal.goal_emoji.trim() !== ''
-          ? goal.goal_emoji.trim()
-          : '🏁';
+    const goalName = typeof goal.goal_name === 'string' ? goal.goal_name.trim() : '';
+    const goalEmoji =
+      typeof goal.goal_emoji === 'string' && goal.goal_emoji.trim() !== ''
+        ? goal.goal_emoji.trim()
+        : '🏁';
 
-      const goalPayload = {
-        goal_name: goalName || 'Mitt mål',
-        goal_date: goalDate,
-        goal_emoji: goalEmoji || '🏁',
-      };
+    const goalPayload = {
+      goal_name: goalName || 'Mitt mål',
+      goal_date: goalDate,
+      goal_emoji: goalEmoji || '🏁',
+    };
 
-      const [profileRes, goalRes, profileGoalRes] = await Promise.all([
-        supabase
-          .from('users')
-          .update({
-            name: profile.name ?? null,
-            current_weight: toFiniteNumber(profile.current_weight),
-            height_cm: toFiniteNumber(profile.height_cm),
-            body_fat_pct: toFiniteNumber(profile.body_fat_pct),
-            ftp_watts: toFiniteNumber(profile.ftp_watts),
-            run_threshold_pace: profile.run_threshold_pace ?? null,
-            vo2max_estimate: toFiniteNumber(profile.vo2max_estimate),
-            training_phase: profile.training_phase ?? null,
-          })
-          .eq('id', uid),
-        supabase.from('user_goals').upsert(
-          {
-            user_id: uid,
-            ...goalPayload,
-          },
-          { onConflict: 'user_id' },
-        ),
-        (supabase as any)
-          .from('user_profiles')
-          .update({
-            ...goalPayload,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('user_id', uid),
-      ]);
+    const displayName =
+      typeof trainingUser.name === 'string' && trainingUser.name.trim() !== ''
+        ? trainingUser.name.trim()
+        : null;
 
-      if (profileRes.error) throw profileRes.error;
-      if (goalRes.error) throw goalRes.error;
-      if (profileGoalRes.error) throw profileGoalRes.error;
-
-      toast.success('Inställningar sparade!');
-      await refetchProfile();
-    } catch (err) {
-      console.error('Settings save failed:', err);
-      toast.error('Kunde inte spara. Försök igen.');
-    } finally {
-      setSaving(false);
-    }
+    await saveSettings({
+      userPatch: {
+        name: trainingUser.name ?? null,
+        current_weight: toFiniteNumber(trainingUser.current_weight),
+        height_cm: toFiniteNumber(trainingUser.height_cm),
+        body_fat_pct: toFiniteNumber(trainingUser.body_fat_pct),
+        ftp_watts: toFiniteNumber(trainingUser.ftp_watts),
+        run_threshold_pace: trainingUser.run_threshold_pace ?? null,
+        vo2max_estimate: toFiniteNumber(trainingUser.vo2max_estimate),
+        training_phase: trainingUser.training_phase ?? null,
+      },
+      goalsInput: {
+        goal_name: goalPayload.goal_name,
+        goal_date: goal.goal_date?.trim() || '',
+        goal_emoji: goalPayload.goal_emoji,
+        profileGoalDate: userProfile?.goal_date ?? null,
+      },
+      profilePatch: {
+        ...goalPayload,
+        display_name: displayName,
+      },
+    });
   };
 
   const retakeQuiz = async () => {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) return;
-    const { error } = await (supabase as any)
-      .from('user_profiles')
-      .update({ onboarding_completed: false })
-      .eq('user_id', authUser.id);
-    if (error) {
-      console.error('retakeQuiz failed:', error);
+    try {
+      const uid = await getCurrentUserId();
+      const { error } = await upsertProfile(uid, { onboarding_completed: false });
+      if (error) {
+        console.error('retakeQuiz failed:', error);
+        toast.error('Kunde inte återställa quiz. Försök igen.');
+        return;
+      }
+      navigate('/onboarding', { replace: true });
+    } catch (e) {
+      console.error('retakeQuiz failed:', e);
       toast.error('Kunde inte återställa quiz. Försök igen.');
-      return;
     }
-    navigate('/onboarding', { replace: true });
   };
 
   const archLabels: Record<string, string> = {
@@ -216,7 +160,6 @@ export default function SettingsPage() {
       <h1 className="mb-6 text-xl tracking-tight">Inställningar</h1>
 
       <div className="space-y-6">
-        {/* User email */}
         <div className="card-athletic">
           <div className="flex items-center gap-3">
             <Mail className="h-5 w-5 text-primary" />
@@ -227,7 +170,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Onboarding profile summary */}
         {userProfile && (
           <div className="card-athletic space-y-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Min profil</p>
@@ -244,7 +186,6 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Body & Health (user_profiles) */}
         <div className="card-athletic space-y-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Kropp & hälsa</p>
           <div className="grid grid-cols-2 gap-3">
@@ -296,35 +237,33 @@ export default function SettingsPage() {
           </Button>
         </div>
 
-        {/* Profile */}
         <div className="card-athletic space-y-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Träningsdata</p>
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Namn</Label>
-              <Input value={profile.name || ''} onChange={(e) => update('name', e.target.value)} />
+              <Input value={trainingUser.name || ''} onChange={(e) => updateTraining('name', e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Vikt (kg)</Label><Input type="number" value={profile.current_weight || ''} onChange={(e) => update('current_weight', e.target.value)} /></div>
-              <div className="space-y-1"><Label className="text-xs">Längd (cm)</Label><Input type="number" value={profile.height_cm || ''} onChange={(e) => update('height_cm', e.target.value)} /></div>
-              <div className="space-y-1"><Label className="text-xs">Kroppsfett %</Label><Input type="number" value={profile.body_fat_pct || ''} onChange={(e) => update('body_fat_pct', e.target.value)} /></div>
-              <div className="space-y-1"><Label className="text-xs">FTP (watt)</Label><Input type="number" value={profile.ftp_watts || ''} onChange={(e) => update('ftp_watts', e.target.value)} /></div>
-              <div className="space-y-1"><Label className="text-xs">Löptempo (min/km)</Label><Input value={profile.run_threshold_pace || ''} onChange={(e) => update('run_threshold_pace', e.target.value)} /></div>
-              <div className="space-y-1"><Label className="text-xs">VO2max</Label><Input type="number" value={profile.vo2max_estimate || ''} onChange={(e) => update('vo2max_estimate', e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">Vikt (kg)</Label><Input type="number" value={trainingUser.current_weight ?? ''} onChange={(e) => updateTraining('current_weight', e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">Längd (cm)</Label><Input type="number" value={trainingUser.height_cm ?? ''} onChange={(e) => updateTraining('height_cm', e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">Kroppsfett %</Label><Input type="number" value={trainingUser.body_fat_pct ?? ''} onChange={(e) => updateTraining('body_fat_pct', e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">FTP (watt)</Label><Input type="number" value={trainingUser.ftp_watts ?? ''} onChange={(e) => updateTraining('ftp_watts', e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">Löptempo (min/km)</Label><Input value={trainingUser.run_threshold_pace || ''} onChange={(e) => updateTraining('run_threshold_pace', e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">VO2max</Label><Input type="number" value={trainingUser.vo2max_estimate ?? ''} onChange={(e) => updateTraining('vo2max_estimate', e.target.value)} /></div>
             </div>
           </div>
         </div>
 
-        {/* Training Phase */}
         <div className="card-athletic space-y-3">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Träningsfas</p>
           <div className="flex gap-2">
             {PHASES.map((phase) => (
               <button
                 key={phase}
-                onClick={() => update('training_phase', phase)}
+                onClick={() => updateTraining('training_phase', phase)}
                 className={`touch-target flex-1 rounded-xl border py-2 text-sm font-medium capitalize transition-all duration-200 ${
-                  profile.training_phase === phase
+                  trainingUser.training_phase === phase
                     ? 'border-primary bg-primary/10 text-primary'
                     : 'border-border bg-card hover:border-primary/40'
                 }`}
@@ -335,17 +274,16 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Garmin */}
         <div className="card-athletic space-y-3">
           <div className="flex items-center gap-2">
             <Watch className="h-4 w-4 text-muted-foreground" />
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Garmin Connect</p>
           </div>
-          {profile.garmin_user_id ? (
+          {trainingUser.garmin_user_id ? (
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-rest" />
               <span className="text-sm text-rest">Ansluten</span>
-              <span className="text-xs text-muted-foreground">({profile.garmin_user_id})</span>
+              <span className="text-xs text-muted-foreground">({trainingUser.garmin_user_id})</span>
             </div>
           ) : (
             <div>
@@ -355,7 +293,6 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* Mitt mål */}
         <div className="card-athletic space-y-3">
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-primary" />
@@ -364,16 +301,16 @@ export default function SettingsPage() {
           <div className="space-y-2">
             <div className="space-y-1">
               <Label className="text-xs">Målnamn</Label>
-              <Input value={goal.goal_name} onChange={(e) => setGoal(g => ({ ...g, goal_name: e.target.value }))} placeholder="t.ex. Ironman 70.3" />
+              <Input value={goal.goal_name} onChange={(e) => setGoal((g) => ({ ...g, goal_name: e.target.value }))} placeholder="t.ex. Ironman 70.3" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Måldatum</Label>
-                <Input type="date" value={goal.goal_date} onChange={(e) => setGoal(g => ({ ...g, goal_date: e.target.value }))} />
+                <Input type="date" value={goal.goal_date} onChange={(e) => setGoal((g) => ({ ...g, goal_date: e.target.value }))} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Emoji</Label>
-                <Input value={goal.goal_emoji} onChange={(e) => setGoal(g => ({ ...g, goal_emoji: e.target.value }))} placeholder="🏁" />
+                <Input value={goal.goal_emoji} onChange={(e) => setGoal((g) => ({ ...g, goal_emoji: e.target.value }))} placeholder="🏁" />
               </div>
             </div>
           </div>

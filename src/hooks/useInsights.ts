@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUserProfile } from '@/hooks/useUserProfile';
+import type { UserProfile } from '@/services/profileService';
 
 export interface KnowledgeRule {
   id: string;
@@ -22,9 +22,8 @@ export interface KnowledgeRule {
 
 const fmtDate = (d: Date) => d.toISOString().split('T')[0];
 
-export function useInsights() {
+export function useInsights(profile: UserProfile | null) {
   const { user } = useAuth();
-  const { profile } = useUserProfile();
   const [rules, setRules] = useState<KnowledgeRule[]>([]);
   const [todayTraining, setTodayTraining] = useState<{ planned_type: string; planned_subtype: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
