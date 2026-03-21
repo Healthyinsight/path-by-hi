@@ -146,8 +146,8 @@ test.describe('Onboarding – triathlon user', () => {
       await summaryStart.click();
     }
 
-    // User should land on TodayView
-    await expect(page.getByText('Dagens pass', { exact: false }).or(page.getByText('Insikter', { exact: false }))).toBeVisible();
+    // User should land on TodayView (exact/role — avoid matching unrelated copy e.g. "… dagens pass")
+    await expect(page.getByRole('heading', { name: '💡 Insikter' })).toBeVisible({ timeout: 15000 });
   });
 });
 

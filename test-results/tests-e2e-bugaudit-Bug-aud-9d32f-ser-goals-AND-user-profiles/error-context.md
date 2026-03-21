@@ -1,0 +1,128 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - heading "Inställningar" [level=1] [ref=e4]
+    - generic [ref=e5]:
+      - generic [ref=e7]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - paragraph [ref=e12]: Inloggad som
+          - paragraph [ref=e13]: test@pathtracker.dev
+      - generic [ref=e14]:
+        - paragraph [ref=e15]: Min profil
+        - generic [ref=e16]:
+          - generic [ref=e17]:
+            - generic [ref=e18]: Namn
+            - generic [ref=e19]: TestUser
+          - generic [ref=e20]:
+            - generic [ref=e21]: Typ
+            - generic [ref=e22]: IRONMAN
+          - generic [ref=e23]:
+            - generic [ref=e24]: Mål
+            - generic [ref=e25]: Bli starkare
+          - generic [ref=e26]:
+            - generic [ref=e27]: Nivå
+            - generic [ref=e28]: intermediate
+          - generic [ref=e29]:
+            - generic [ref=e30]: Träningsdagar
+            - generic [ref=e31]: 3/vecka
+        - button "Kör quizen igen" [ref=e32] [cursor=pointer]:
+          - img
+          - text: Kör quizen igen
+      - generic [ref=e33]:
+        - paragraph [ref=e34]: Kropp & hälsa
+        - generic [ref=e35]:
+          - generic [ref=e36]:
+            - text: Vikt (kg)
+            - spinbutton [ref=e37]
+          - generic [ref=e38]:
+            - text: Längd (cm)
+            - spinbutton [ref=e39]: "182"
+          - generic [ref=e40]:
+            - text: Målvikt (kg)
+            - spinbutton [ref=e41]
+          - generic [ref=e42]:
+            - text: Kroppsfett (%)
+            - spinbutton [ref=e43]
+        - button "Spara" [ref=e44] [cursor=pointer]
+      - generic [ref=e45]:
+        - paragraph [ref=e46]: Träningsdata
+        - generic [ref=e47]:
+          - generic [ref=e48]:
+            - text: Namn
+            - textbox [ref=e49]: TestUser
+          - generic [ref=e50]:
+            - generic [ref=e51]:
+              - text: Vikt (kg)
+              - spinbutton [ref=e52]
+            - generic [ref=e53]:
+              - text: Längd (cm)
+              - spinbutton [ref=e54]
+            - generic [ref=e55]:
+              - text: Kroppsfett %
+              - spinbutton [ref=e56]
+            - generic [ref=e57]:
+              - text: FTP (watt)
+              - spinbutton [ref=e58]
+            - generic [ref=e59]:
+              - text: Löptempo (min/km)
+              - textbox [ref=e60]: 4:30
+            - generic [ref=e61]:
+              - text: VO2max
+              - spinbutton [ref=e62]
+      - generic [ref=e63]:
+        - paragraph [ref=e64]: Träningsfas
+        - generic [ref=e65]:
+          - button "base" [ref=e66] [cursor=pointer]
+          - button "build" [ref=e67] [cursor=pointer]
+          - button "peak" [ref=e68] [cursor=pointer]
+          - button "taper" [ref=e69] [cursor=pointer]
+      - generic [ref=e70]:
+        - generic [ref=e71]:
+          - img [ref=e72]
+          - paragraph [ref=e77]: Garmin Connect
+        - generic [ref=e78]:
+          - button "Anslut Garmin" [disabled]
+          - paragraph [ref=e79]: Garmin-integration kommer snart
+      - generic [ref=e80]:
+        - generic [ref=e81]:
+          - img [ref=e82]
+          - paragraph [ref=e86]: Mitt mål
+        - generic [ref=e87]:
+          - generic [ref=e88]:
+            - text: Målnamn
+            - textbox "t.ex. Ironman 70.3" [ref=e89]: Bli starkare
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - text: Måldatum
+              - textbox [ref=e92]: 2026-06-21
+            - generic [ref=e93]:
+              - text: Emoji
+              - textbox "🏁" [ref=e94]: 💪
+      - button "Spara inställningar" [ref=e95] [cursor=pointer]
+      - button "Logga ut" [ref=e96] [cursor=pointer]:
+        - img
+        - text: Logga ut
+    - navigation [ref=e97]:
+      - generic [ref=e98]:
+        - button "Idag" [ref=e99] [cursor=pointer]:
+          - img [ref=e100]
+          - generic [ref=e103]: Idag
+        - button "Schema" [ref=e104] [cursor=pointer]:
+          - img [ref=e105]
+          - generic [ref=e107]: Schema
+        - button "Kost" [ref=e108] [cursor=pointer]:
+          - img [ref=e109]
+          - generic [ref=e112]: Kost
+        - button "Översikt" [ref=e113] [cursor=pointer]:
+          - img [ref=e114]
+          - generic [ref=e116]: Översikt
+        - button "Inställningar" [ref=e117] [cursor=pointer]:
+          - img [ref=e118]
+          - generic [ref=e121]: Inställningar
+```

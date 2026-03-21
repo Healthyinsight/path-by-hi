@@ -16,7 +16,7 @@ const PHASES = ['base', 'build', 'peak', 'taper'];
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { profile: userProfile, refetch: refetchProfile, updateProfile } = useUserProfile();
+  const { profile: userProfile, refetch: refetchProfile } = useUserProfile();
   const [profile, setProfile] = useState<Partial<UserProfile>>({});
   const [goal, setGoal] = useState<{ goal_name: string; goal_date: string; goal_emoji: string }>({
     goal_name: '', goal_date: '', goal_emoji: '🏁',
@@ -66,16 +66,43 @@ export default function SettingsPage() {
     return Number.isFinite(n) ? n : null;
   };
 
+  /** Undvik NaN i Supabase-uppdateringar när Träningsdata-fält är tomma/ofyllda. */
+  const toFiniteNumber = (v: unknown): number | null => {
+    if (v === '' || v === undefined || v === null) return null;
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
   const saveBodyProfile = async () => {
     if (!user) return;
     setSavingBody(true);
     try {
-      await updateProfile({
-        weight: toNumOrNull(body.weight),
-        target_weight: toNumOrNull(body.target_weight),
-        body_fat_pct: toNumOrNull(body.body_fat_pct),
-        height_cm: toNumOrNull(body.height_cm),
-      } as any);
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authData?.user) {
+        toast.error('Kunde inte verifiera inloggning.');
+        return;
+      }
+      const uid = authData.user.id;
+
+      // Uppdatera bara fält användaren faktiskt fyllt i — skicka inte null för tomma inputs
+      // (annars nollställs t.ex. vikt när man bara sparar längd, och tvärtom).
+      const patch: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (body.weight.trim() !== '') patch.weight = toNumOrNull(body.weight);
+      if (body.height_cm.trim() !== '') patch.height_cm = toNumOrNull(body.height_cm);
+      if (body.target_weight.trim() !== '') patch.target_weight = toNumOrNull(body.target_weight);
+      if (body.body_fat_pct.trim() !== '') patch.body_fat_pct = toNumOrNull(body.body_fat_pct);
+
+      const hasBodyMetric = Object.keys(patch).some((k) => k !== 'updated_at');
+      if (!hasBodyMetric) {
+        toast.error('Fyll i minst ett kroppsmått.');
+        return;
+      }
+
+      const { error: upErr } = await (supabase as any).from('user_profiles').update(patch).eq('user_id', uid);
+      if (upErr) throw upErr;
+
       toast.success('Sparad!');
       await refetchProfile();
     } catch (err) {
@@ -89,20 +116,79 @@ export default function SettingsPage() {
   const save = async () => {
     if (!user) return;
     setSaving(true);
-    const [profileRes, goalRes] = await Promise.all([
-      supabase.from('users').update({
-        name: profile.name, current_weight: Number(profile.current_weight),
-        height_cm: Number(profile.height_cm), body_fat_pct: Number(profile.body_fat_pct),
-        ftp_watts: Number(profile.ftp_watts), run_threshold_pace: profile.run_threshold_pace,
-        vo2max_estimate: Number(profile.vo2max_estimate), training_phase: profile.training_phase,
-      }).eq('id', user.id),
-      supabase.from('user_goals').upsert({
-        user_id: user.id, goal_name: goal.goal_name, goal_date: goal.goal_date, goal_emoji: goal.goal_emoji,
-      }, { onConflict: 'user_id' }),
-    ]);
-    if (profileRes.error || goalRes.error) toast.error('Kunde inte spara');
-    else toast.success('Inställningar sparade!');
-    setSaving(false);
+    try {
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authData?.user) {
+        toast.error('Kunde inte verifiera inloggning.');
+        return;
+      }
+      const uid = authData.user.id;
+
+      // user_goals.goal_date is NOT NULL — empty string fails the upsert; fall back to profil / default.
+      const goalDateRaw = typeof goal.goal_date === 'string' ? goal.goal_date.trim() : '';
+      const profileGoalDate =
+        typeof userProfile?.goal_date === 'string' ? userProfile.goal_date.trim() : '';
+      const goalDate =
+        goalDateRaw !== ''
+          ? goalDateRaw
+          : profileGoalDate !== ''
+            ? profileGoalDate
+            : new Date(Date.now() + 86400000 * 180).toISOString().split('T')[0];
+
+      const goalName = typeof goal.goal_name === 'string' ? goal.goal_name.trim() : '';
+      const goalEmoji =
+        typeof goal.goal_emoji === 'string' && goal.goal_emoji.trim() !== ''
+          ? goal.goal_emoji.trim()
+          : '🏁';
+
+      const goalPayload = {
+        goal_name: goalName || 'Mitt mål',
+        goal_date: goalDate,
+        goal_emoji: goalEmoji || '🏁',
+      };
+
+      const [profileRes, goalRes, profileGoalRes] = await Promise.all([
+        supabase
+          .from('users')
+          .update({
+            name: profile.name ?? null,
+            current_weight: toFiniteNumber(profile.current_weight),
+            height_cm: toFiniteNumber(profile.height_cm),
+            body_fat_pct: toFiniteNumber(profile.body_fat_pct),
+            ftp_watts: toFiniteNumber(profile.ftp_watts),
+            run_threshold_pace: profile.run_threshold_pace ?? null,
+            vo2max_estimate: toFiniteNumber(profile.vo2max_estimate),
+            training_phase: profile.training_phase ?? null,
+          })
+          .eq('id', uid),
+        supabase.from('user_goals').upsert(
+          {
+            user_id: uid,
+            ...goalPayload,
+          },
+          { onConflict: 'user_id' },
+        ),
+        (supabase as any)
+          .from('user_profiles')
+          .update({
+            ...goalPayload,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', uid),
+      ]);
+
+      if (profileRes.error) throw profileRes.error;
+      if (goalRes.error) throw goalRes.error;
+      if (profileGoalRes.error) throw profileGoalRes.error;
+
+      toast.success('Inställningar sparade!');
+      await refetchProfile();
+    } catch (err) {
+      console.error('Settings save failed:', err);
+      toast.error('Kunde inte spara. Försök igen.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const retakeQuiz = async () => {
