@@ -99,7 +99,15 @@ export default function Dashboard() {
       supabase.from('training_schedule').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('training_schedule').select('*').eq('user_id', user.id).gte('date', weekStart).lte('date', weekEnd).order('date'),
       supabase.from('training_schedule').select('*').eq('user_id', user.id).order('date'),
-      supabase.from('body_metrics').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(1).single(),
+      supabase
+        .from('body_metrics')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('garmin_measured_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
+        .order('date', { ascending: false })
+        .limit(1)
+        .single(),
       supabase.from('body_metrics').select('date,weight').eq('user_id', user.id).order('date'),
       supabase.from('nutrition_plan').select('*').eq('user_id', user.id).eq('date', today).single(),
       supabase.from('nutrition_plan').select('*').eq('user_id', user.id).gte('date', weekStart).lte('date', weekEnd).order('date'),

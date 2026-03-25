@@ -82,6 +82,7 @@ export type Database = {
           body_fat_pct: number | null
           created_at: string
           date: string
+          garmin_measured_at: string | null
           hrv_rmssd: number | null
           id: string
           resting_hr: number | null
@@ -99,6 +100,7 @@ export type Database = {
           body_fat_pct?: number | null
           created_at?: string
           date: string
+          garmin_measured_at?: string | null
           hrv_rmssd?: number | null
           id?: string
           resting_hr?: number | null
@@ -116,6 +118,7 @@ export type Database = {
           body_fat_pct?: number | null
           created_at?: string
           date?: string
+          garmin_measured_at?: string | null
           hrv_rmssd?: number | null
           id?: string
           resting_hr?: number | null
@@ -165,6 +168,36 @@ export type Database = {
           is_disc_safe?: boolean | null
           muscle_group?: string | null
           name?: string
+        }
+        Relationships: []
+      }
+      garmin_webhook_events: {
+        Row: {
+          id: string
+          received_at: string
+          event_type: string
+          payload_json: Json
+          processed_at: string | null
+          error: string | null
+          dedupe_key: string
+        }
+        Insert: {
+          id?: string
+          received_at?: string
+          event_type: string
+          payload_json: Json
+          processed_at?: string | null
+          error?: string | null
+          dedupe_key: string
+        }
+        Update: {
+          id?: string
+          received_at?: string
+          event_type?: string
+          payload_json?: Json
+          processed_at?: string | null
+          error?: string | null
+          dedupe_key?: string
         }
         Relationships: []
       }
@@ -560,7 +593,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      merge_body_battery_from_garmin: {
+        Args: {
+          p_user_id: string
+          p_date: string
+          p_body_battery: number
+          p_garmin_measured_at: string | null
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

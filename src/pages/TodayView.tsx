@@ -17,6 +17,7 @@ import { Progress } from '@/components/ui/progress';
 import { Check, Calendar, ChefHat, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 import { getNutritionTargets } from '@/lib/nutritionEngine';
+import { getLatestMetrics } from '@/services/metricsService';
 
 /* ---- helpers ---- */
 const fmtDate = (d: Date) => d.toISOString().split('T')[0];
@@ -121,6 +122,12 @@ export default function TodayView() {
 
   const [nutrition, setNutrition] = useState<any | null>(null);
   const [loadingNutrition, setLoadingNutrition] = useState(true);
+  const [latestMetrics, setLatestMetrics] = useState<{
+    body_battery: number | null;
+    garmin_measured_at: string | null;
+    created_at: string;
+  } | null>(null);
+  const [loadingGarminBattery, setLoadingGarminBattery] = useState(true);
 
   const { insights, loading: loadingInsights } = useInsights(profile);
   const [showAllInsights, setShowAllInsights] = useState(false);
@@ -134,6 +141,31 @@ export default function TodayView() {
       setLoadingNutrition(false);
     })();
   }, [user, today]);
+
+  useEffect(() => {
+    if (!user) {
+      setLatestMetrics(null);
+      setLoadingGarminBattery(false);
+      return;
+    }
+    setLoadingGarminBattery(true);
+    void (async () => {
+      const { data, error } = await getLatestMetrics(user.id);
+      if (error) {
+        console.warn('[TodayView] getLatestMetrics', error);
+        setLatestMetrics(null);
+      } else if (!data) {
+        setLatestMetrics(null);
+      } else {
+        setLatestMetrics({
+          body_battery: data.body_battery,
+          garmin_measured_at: data.garmin_measured_at,
+          created_at: data.created_at,
+        });
+      }
+      setLoadingGarminBattery(false);
+    })();
+  }, [user]);
 
   const markCompleted = async () => {
     if (!workout) return;
@@ -220,8 +252,61 @@ export default function TodayView() {
             {motivation}
           </p>
         </motion.section>
-        
-                {/* 1. Insights */}
+
+        {/* Garmin Body Battery */}
+        <motion.section variants={cardVariant(0)} initial="hidden" animate="visible" className="mb-4">
+          {loadingGarminBattery ? (
+            <div className="card-glass animate-pulse h-20" />
+          ) : latestMetrics?.body_battery != null ? (
+            <div className="card-glass space-y-1 py-4">
+              <p
+                style={{
+                  fontFamily: "'Merriweather', serif",
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#1A2B32',
+                }}
+              >
+                Body Battery (senaste)
+              </p>
+              <p
+                className="font-data-num"
+                style={{ fontSize: '28px', fontWeight: 700, color: '#5095AC' }}
+              >
+                {latestMetrics.body_battery}
+              </p>
+              <p
+                style={{
+                  fontFamily: "'Merriweather Sans', sans-serif",
+                  fontSize: '12px',
+                  color: '#6B7B84',
+                }}
+              >
+                Senast uppdaterad:{' '}
+                {new Date(
+                  latestMetrics.garmin_measured_at ?? latestMetrics.created_at,
+                ).toLocaleString('sv-SE', {
+                  dateStyle: 'short',
+                  timeStyle: 'short',
+                })}
+              </p>
+            </div>
+          ) : (
+            <div className="card-glass py-4">
+              <p
+                style={{
+                  fontFamily: "'Merriweather Sans', sans-serif",
+                  fontSize: '14px',
+                  color: '#6B7B84',
+                }}
+              >
+                Ingen Garmin Body Battery ännu — synkas när din enhet skickat data.
+              </p>
+            </div>
+          )}
+        </motion.section>
+
+        {/* 1. Insights */}
         <motion.section variants={cardVariant(5)} initial="hidden" animate="visible" className="mb-4 space-y-3">
           <h3 style={{ fontFamily: "'Merriweather', serif", fontSize: '16px', fontWeight: 600, color: '#1A2B32' }}>
             💡 Insikter

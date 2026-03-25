@@ -1,0 +1,10 @@
+{
+  "eventType": "dailies",
+  "userId": "REPLACE_WITH_USERS_GARMIN_USER_ID",
+  "calendarDate": "2026-03-25",
+  "startTimeInSeconds": 1711324800,
+  "timeOffsetBodyBatteryValues": [
+    { "offset": 0, "value": 72 },
+    { "offset": 3600, "value": 68 }
+  ]
+}

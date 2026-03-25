@@ -87,6 +87,7 @@ export interface BodyMetric {
   body_battery: number | null;
   stress_level: number | null;
   source: string;
+  garmin_measured_at: string | null;
   created_at: string;
 }
 

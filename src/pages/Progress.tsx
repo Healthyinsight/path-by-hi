@@ -12,8 +12,14 @@ export default function Progress() {
   useEffect(() => {
     if (!user) return;
     supabase
-      .from('body_metrics').select('*').eq('user_id', user.id)
-      .order('date', { ascending: false }).limit(1).single()
+      .from('body_metrics')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('garmin_measured_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
+      .order('date', { ascending: false })
+      .limit(1)
+      .single()
       .then(({ data }) => { if (data) setMetrics(data); });
   }, [user]);
 

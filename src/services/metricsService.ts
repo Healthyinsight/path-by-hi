@@ -39,6 +39,8 @@ export async function getLatestMetrics(
     .from('body_metrics')
     .select('*')
     .eq('user_id', userId)
+    .order('garmin_measured_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
     .order('date', { ascending: false })
     .limit(1)
     .maybeSingle();
