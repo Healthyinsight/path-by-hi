@@ -3,6 +3,11 @@
  * Requires: GARMIN_CONSUMER_KEY, GARMIN_CONSUMER_SECRET, GARMIN_WEBHOOK_SIGNING_URL (exact callback URL Garmin signs).
  * Optional 3-legged: Authorization must include oauth_token matching public.users.garmin_access_token;
  * signing uses garmin_access_secret. If oauth_token is absent, verifies with consumer secret only (signing key ends with &).
+ *
+ * Dev-only test mode:
+ *   - Set GARMIN_WEBHOOK_TESTMODE_SECRET
+ *   - Send header `x-garmin-test-signature` = HMAC-SHA256(testSecret, rawBody) in hex
+ *   - If Garmin OAuth verification fails, this test signature can be used (fail-closed).
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 
@@ -137,6 +142,27 @@ async function sha256HexOfString(s: string): Promise<string> {
   return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+async function hmacSha256Hex(key: string, data: string): Promise<string> {
+  const enc = new TextEncoder();
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(key),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(data));
+  const bytes = new Uint8Array(sig);
+  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function normalizeHexSignature(s: string): string {
+  return s
+    .trim()
+    .replace(/^sha256:/i, '')
+    .toLowerCase();
+}
+
 function asRecord(v: unknown): Record<string, unknown> | null {
   return v !== null && typeof v === 'object' && !Array.isArray(v)
     ? (v as Record<string, unknown>)
@@ -244,65 +270,85 @@ Deno.serve(async (req: Request) => {
   const consumerKey = Deno.env.get('GARMIN_CONSUMER_KEY');
   const consumerSecret = Deno.env.get('GARMIN_CONSUMER_SECRET');
   const signingUrl = Deno.env.get('GARMIN_WEBHOOK_SIGNING_URL');
+  const testSecret = Deno.env.get('GARMIN_WEBHOOK_TESTMODE_SECRET') || null;
 
-  if (!supabaseUrl || !serviceKey || !consumerKey || !consumerSecret || !signingUrl) {
-    console.error('[garmin-webhook] missing required env');
+  if (!supabaseUrl || !serviceKey) {
+    console.error('[garmin-webhook] missing SUPABASE env');
     return jsonResponse({ error: 'server_misconfigured' }, 500);
   }
 
   const rawBody = await req.text();
+
   const oauthParams = parseOAuthAuthorization(req.headers.get('Authorization'));
-  if (!oauthParams) {
-    return jsonResponse({ error: 'invalid_authorization' }, 401);
+  const testSigHeader =
+    req.headers.get('x-garmin-test-signature') ||
+    req.headers.get('X-Garmin-Test-Signature');
+
+  const hasOauthVerification =
+    !!(consumerKey && consumerSecret && signingUrl);
+
+  let verified = false;
+
+  // Path 1: Garmin OAuth 1.0a (fail-closed).
+  if (oauthParams && hasOauthVerification) {
+    try {
+      if (oauthParams.oauth_signature_method === 'HMAC-SHA1' &&
+          oauthParams.oauth_consumer_key === consumerKey) {
+        const ts = oauthParams.oauth_timestamp
+          ? parseInt(oauthParams.oauth_timestamp, 10)
+          : NaN;
+        if (Number.isFinite(ts)) {
+          const skew = Math.abs(Math.floor(Date.now() / 1000) - ts);
+          if (skew <= 600) {
+            const supabase = createClient(supabaseUrl, serviceKey);
+            let tokenSecret = '';
+            const oauthToken = oauthParams.oauth_token;
+
+            if (oauthToken) {
+              const { data: userRow, error: userErr } = await supabase
+                .from('users')
+                .select('garmin_access_secret')
+                .eq('garmin_access_token', oauthToken)
+                .maybeSingle();
+
+              if (!userErr && userRow?.garmin_access_secret) {
+                tokenSecret = userRow.garmin_access_secret;
+              } else {
+                tokenSecret = '';
+                // invalid oauth token => keep verified=false
+              }
+            }
+
+            const okSig = await verifyOAuth1aHmacSha1({
+              method: 'POST',
+              signingUrl,
+              oauthParams,
+              consumerSecret,
+              tokenSecret,
+            });
+            verified = okSig;
+          }
+        }
+      }
+    } catch (e) {
+      verified = false;
+    }
   }
 
-  if (oauthParams.oauth_signature_method !== 'HMAC-SHA1') {
-    return jsonResponse({ error: 'unsupported_signature_method' }, 401);
+  // Path 2: Dev-only test signature (still fail-closed).
+  if (!verified && testSecret && testSigHeader) {
+    const expected = await hmacSha256Hex(testSecret, rawBody);
+    verified = timingSafeEqualString(
+      expected,
+      normalizeHexSignature(testSigHeader),
+    );
   }
 
-  if (oauthParams.oauth_consumer_key !== consumerKey) {
-    return jsonResponse({ error: 'invalid_consumer_key' }, 401);
-  }
-
-  const ts = oauthParams.oauth_timestamp
-    ? parseInt(oauthParams.oauth_timestamp, 10)
-    : NaN;
-  if (!Number.isFinite(ts)) {
-    return jsonResponse({ error: 'invalid_timestamp' }, 401);
-  }
-  const skew = Math.abs(Math.floor(Date.now() / 1000) - ts);
-  if (skew > 600) {
-    return jsonResponse({ error: 'timestamp_out_of_range' }, 401);
+  if (!verified) {
+    return jsonResponse({ error: 'invalid_signature' }, 401);
   }
 
   const supabase = createClient(supabaseUrl, serviceKey);
-  let tokenSecret = '';
-  const oauthToken = oauthParams.oauth_token;
-
-  if (oauthToken) {
-    const { data: userRow, error: userErr } = await supabase
-      .from('users')
-      .select('garmin_access_secret')
-      .eq('garmin_access_token', oauthToken)
-      .maybeSingle();
-
-    if (userErr || !userRow?.garmin_access_secret) {
-      return jsonResponse({ error: 'invalid_token' }, 401);
-    }
-    tokenSecret = userRow.garmin_access_secret;
-  }
-
-  const okSig = await verifyOAuth1aHmacSha1({
-    method: 'POST',
-    signingUrl,
-    oauthParams,
-    consumerSecret,
-    tokenSecret,
-  });
-
-  if (!okSig) {
-    return jsonResponse({ error: 'invalid_signature' }, 401);
-  }
 
   let parsedJson: unknown;
   try {

@@ -1,9 +1,14 @@
 #!/usr/bin/env node
 /**
- * Builds OAuth 1.0a Authorization (HMAC-SHA1) for POST body identical to Garmin Health API patterns.
- * Env (required): GARMIN_CONSUMER_KEY, GARMIN_CONSUMER_SECRET, GARMIN_WEBHOOK_SIGNING_URL
- *   GARMIN_WEBHOOK_SIGNING_URL = exact URL Garmin signs (often same as POST target).
- * Optional 3-legged: GARMIN_OAUTH_TOKEN, GARMIN_TOKEN_SECRET (must match a row in public.users).
+ * Builds a signed POST request for `supabase/functions/garmin-webhook`.
+ *
+ * Mode A (OAuth 1.0a HMAC-SHA1):
+ *   Env required: GARMIN_CONSUMER_KEY, GARMIN_CONSUMER_SECRET, GARMIN_WEBHOOK_SIGNING_URL
+ *   Optional 3-legged: GARMIN_OAUTH_TOKEN, GARMIN_TOKEN_SECRET (must match a row in public.users).
+ *
+ * Mode B (dev-only test auth, no Garmin keys):
+ *   Env: GARMIN_WEBHOOK_TESTMODE_SECRET
+ *   Header: `x-garmin-test-signature` = HMAC-SHA256(secret, rawBody) in hex.
  *
  * Usage:
  *   node scripts/garmin-webhook-sign-and-curl.mjs fixtures/garmin/body-battery-webhook.json
@@ -34,21 +39,42 @@ function normalizeSigningUrl(url) {
   return `${scheme}://${authority}${path}`;
 }
 
+// Escape for POSIX sh: single-quote by replacing ' -> '\''
+const esc = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
+
 const fixturePath = process.argv[2] || 'fixtures/garmin/body-battery-webhook.json';
 const rawBody = readFileSync(fixturePath, 'utf8');
 
 const consumerKey = process.env.GARMIN_CONSUMER_KEY;
 const consumerSecret = process.env.GARMIN_CONSUMER_SECRET;
 const signingUrl = process.env.GARMIN_WEBHOOK_SIGNING_URL;
-const postUrl = process.env.GARMIN_WEBHOOK_POST_URL || signingUrl;
+const postUrl =
+  process.env.GARMIN_WEBHOOK_POST_URL ||
+  signingUrl ||
+  'http://127.0.0.1:54321/functions/v1/garmin-webhook';
 const oauthToken = process.env.GARMIN_OAUTH_TOKEN || '';
 const tokenSecret = process.env.GARMIN_TOKEN_SECRET || '';
+const testSecret = process.env.GARMIN_WEBHOOK_TESTMODE_SECRET || '';
 
-if (!consumerKey || !consumerSecret || !signingUrl || !postUrl) {
+const oauthMode = !!(consumerKey && consumerSecret && signingUrl);
+const testMode = !!testSecret && !oauthMode;
+
+if (!oauthMode && !testMode) {
   console.error(
-    'Missing env: GARMIN_CONSUMER_KEY, GARMIN_CONSUMER_SECRET, GARMIN_WEBHOOK_SIGNING_URL (and optional GARMIN_WEBHOOK_POST_URL)',
+    'Missing request signing env. Provide either OAuth vars (GARMIN_CONSUMER_KEY, GARMIN_CONSUMER_SECRET, GARMIN_WEBHOOK_SIGNING_URL) or dev test var (GARMIN_WEBHOOK_TESTMODE_SECRET).',
   );
   process.exit(1);
+}
+
+// TESTMODE early exit (no Garmin OAuth header).
+if (testMode) {
+  const signature = createHmac('sha256', testSecret).update(rawBody).digest('hex');
+  console.log(`# Signed POST in TESTMODE (header x-garmin-test-signature) for ${fixturePath}`);
+  console.log(`curl -sS -X POST ${esc(postUrl)} \\`);
+  console.log(`  -H ${esc('Content-Type: application/json')} \\`);
+  console.log(`  -H ${esc('x-garmin-test-signature: ' + signature)} \\`);
+  console.log(`  --data-binary ${esc(rawBody)}`);
+  process.exit(0);
 }
 
 const nonce = randomBytes(16).toString('hex');
@@ -91,9 +117,6 @@ if (oauthToken) {
 }
 
 const authorization = `OAuth ${headerParts.join(', ')}`;
-
-// Escape for POSIX sh: single-quote by replacing ' -> '\''
-const esc = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
 
 console.log(`# Signed POST (body must match ${fixturePath} exactly)`);
 console.log(

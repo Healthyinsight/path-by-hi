@@ -1,8 +1,12 @@
 #!/usr/bin/env sh
 # Print a signed curl command for the Body Battery fixture. Copy-paste the curl lines to execute.
 #
-# Env (required): GARMIN_CONSUMER_KEY, GARMIN_CONSUMER_SECRET, GARMIN_WEBHOOK_SIGNING_URL
-# Optional: GARMIN_WEBHOOK_POST_URL (defaults to signing URL), GARMIN_OAUTH_TOKEN, GARMIN_TOKEN_SECRET
+# Env:
+#   - OAuth mode (Garmin keys available): GARMIN_CONSUMER_KEY, GARMIN_CONSUMER_SECRET, GARMIN_WEBHOOK_SIGNING_URL
+#   - Test mode (no Garmin keys): GARMIN_WEBHOOK_TESTMODE_SECRET
+# Optional:
+#   - GARMIN_WEBHOOK_POST_URL (defaults to signing URL)
+#   - GARMIN_OAUTH_TOKEN, GARMIN_TOKEN_SECRET (3-legged OAuth)
 #
 # Before testing: set users.garmin_user_id to match fixtures/garmin/body-battery-webhook.json "userId".
 
