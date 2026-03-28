@@ -301,8 +301,9 @@ Deno.serve(async (req: Request) => {
           const skew = Math.abs(Math.floor(Date.now() / 1000) - ts);
           if (skew <= 600) {
             const supabase = createClient(supabaseUrl, serviceKey);
-            let tokenSecret = '';
             const oauthToken = oauthParams.oauth_token;
+            let tokenSecret = '';
+            let canVerifyOauth = true;
 
             if (oauthToken) {
               const { data: userRow, error: userErr } = await supabase
@@ -311,22 +312,24 @@ Deno.serve(async (req: Request) => {
                 .eq('garmin_access_token', oauthToken)
                 .maybeSingle();
 
-              if (!userErr && userRow?.garmin_access_secret) {
-                tokenSecret = userRow.garmin_access_secret;
+              if (userErr || !userRow?.garmin_access_secret) {
+                // 3-legged: never verify with empty token secret if oauth_token was sent.
+                canVerifyOauth = false;
               } else {
-                tokenSecret = '';
-                // invalid oauth token => keep verified=false
+                tokenSecret = userRow.garmin_access_secret;
               }
             }
 
-            const okSig = await verifyOAuth1aHmacSha1({
-              method: 'POST',
-              signingUrl,
-              oauthParams,
-              consumerSecret,
-              tokenSecret,
-            });
-            verified = okSig;
+            if (canVerifyOauth) {
+              const okSig = await verifyOAuth1aHmacSha1({
+                method: 'POST',
+                signingUrl,
+                oauthParams,
+                consumerSecret,
+                tokenSecret,
+              });
+              verified = okSig;
+            }
           }
         }
       }
