@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
@@ -11,10 +12,19 @@ import { RecoveryRing } from '@/components/RecoveryRing';
 import { RaceCountdownArc } from '@/components/RaceCountdownArc';
 import { InsightCard } from '@/components/InsightCard';
 import { useInsights } from '@/hooks/useInsights';
-import { getTodayRecovery, getStreakMessage } from '@/data/mockRecoveryData';
+import { getTodayRecovery, getStreakMilestone } from '@/data/mockRecoveryData';
+import { buildFallbackTodayInsight } from '@/data/fallbackInsight';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Check, Calendar, ChefHat, ClipboardList } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Slider } from '@/components/ui/slider';
+import { Check, Calendar, ChefHat, ClipboardList, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { getNutritionTargets } from '@/lib/nutritionEngine';
 import { getLatestMetrics } from '@/services/metricsService';
@@ -35,24 +45,6 @@ function weeksProgress() {
   return { currentWeek, totalWeeks };
 }
 
-function getGreeting(name: string): string {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 11) return `God morgon, ${name} ☀️`;
-  if (hour >= 11 && hour < 17) return `Hej ${name} 👋`;
-  if (hour >= 17 && hour < 22) return `God kväll, ${name} 🌙`;
-  return `Nattuglan är ute, ${name} 🦉`;
-}
-
-function getWorkoutMotivation(sport?: string, type?: string): string {
-  if (!sport && !type) return 'Planera din dag – varje steg räknas 🛤️';
-  if (sport === 'swim') return 'Simdag – låt vattnet bära dig 🏊';
-  if (sport === 'run') return 'Löpdag – dags att bygga basen 🏃';
-  if (sport === 'bike') return 'Cykeldag – känn vinden 🚴';
-  if (type === 'strength') return 'Styrkedag – bli starkare än igår 💪';
-  if (type === 'rest') return 'Återhämtningsdag – din kropp tackar dig 🙏';
-  return 'Planera din dag – varje steg räknas 🛤️';
-}
-
 function getUserFirstName(user: any, profile: any): string {
   const meta = user?.user_metadata;
   if (meta?.first_name) return meta.first_name;
@@ -61,24 +53,15 @@ function getUserFirstName(user: any, profile: any): string {
   const email = user?.email || '';
   const local = email.split('@')[0];
   if (local && local.length > 1) return local.charAt(0).toUpperCase() + local.slice(1);
-  return 'där';
+  return '';
 }
 
-const sportLabels: Record<string, string> = { bike: 'Cykling', run: 'Löpning', swim: 'Simning', strength: 'Styrka' };
-const subtypeLabels: Record<string, string> = {
-  long_distance: 'Långdistans', vo2max: 'VO2max', upper: 'Överkropp', lower: 'Underkropp',
-  long_swim: 'Långsim', technique_intervals: 'Teknik & Intervaller',
-};
 const workoutIcons: Record<string, string> = { bike: '🚴', run: '🏃', swim: '🏊', strength: '💪' };
-const nutritionTips: Record<string, string> = {
-  strength: '💪 Styrkedag = höj proteinet. Sikta på 175g+.',
-  long_distance: '🚴 Långpass = fuel first. Kolhydrater är din vän idag.',
-  vo2max: '⚡ Intervalldag = bra recovery-nutrition efter passet.',
-  rest: '🧘 Vilodag = håll proteinet högt, minska kolhydrater.',
-  long_swim: '🏊 Långsim = ät ordentligt innan, 310g carbs idag.',
-  technique_intervals: '🏊 Tekniksim = lättare dag, perfekt för litet underskott.',
-};
 const DEFAULT_NUTRITION = { kcal: 2400, protein: 170, carbs: 270, fat: 72 };
+
+function moodStorageKey(userId: string, day: string) {
+  return `pathTracker.dailyMood.${userId}.${day}`;
+}
 
 function fireConfetti() {
   confetti({
@@ -107,6 +90,7 @@ const cardVariant = (i: number) => ({
 
 /* ---- component ---- */
 export default function TodayView() {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { profile } = useProfile();
   const navigate = useNavigate();
@@ -130,8 +114,24 @@ export default function TodayView() {
   const [loadingGarminBattery, setLoadingGarminBattery] = useState(true);
 
   const { insights, loading: loadingInsights } = useInsights(profile);
-  const [showAllInsights, setShowAllInsights] = useState(false);
   const recovery = useMemo(() => getTodayRecovery(), []);
+  const [moodDialogOpen, setMoodDialogOpen] = useState(false);
+  const [moodSliderValue, setMoodSliderValue] = useState([3]);
+  const [savedMoodToday, setSavedMoodToday] = useState<number | null>(null);
+
+  const insightsLimited = insights.slice(0, 2);
+  const hasRecoverySignal =
+    !loadingGarminBattery && latestMetrics?.body_battery != null;
+
+  const fallbackInsight = useMemo(() => buildFallbackTodayInsight(t), [t, i18n.language]);
+
+  const trSport = (s?: string | null) =>
+    s && ['bike', 'run', 'swim', 'strength'].includes(s) ? t(`sports.${s}`) : s || '';
+  const trSubtype = (s?: string | null) =>
+    s &&
+    ['long_distance', 'vo2max', 'upper', 'lower', 'long_swim', 'technique_intervals'].includes(s)
+      ? t(`subtypes.${s}`)
+      : s || '';
 
   useEffect(() => {
     if (!user) return;
@@ -167,14 +167,60 @@ export default function TodayView() {
     })();
   }, [user]);
 
+  useEffect(() => {
+    if (!user) {
+      setSavedMoodToday(null);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(moodStorageKey(user.id, today));
+      if (!raw) {
+        setSavedMoodToday(null);
+        return;
+      }
+      const parsed = JSON.parse(raw) as { value?: unknown };
+      if (typeof parsed.value === 'number' && parsed.value >= 1 && parsed.value <= 5) {
+        setSavedMoodToday(parsed.value);
+      } else {
+        setSavedMoodToday(null);
+      }
+    } catch {
+      setSavedMoodToday(null);
+    }
+  }, [user, today]);
+
+  const openMoodDialog = () => {
+    setMoodSliderValue([savedMoodToday ?? 3]);
+    setMoodDialogOpen(true);
+  };
+
+  const saveMood = () => {
+    if (!user) return;
+    const v = moodSliderValue[0] ?? 3;
+    try {
+      localStorage.setItem(
+        moodStorageKey(user.id, today),
+        JSON.stringify({ value: v, at: new Date().toISOString() }),
+      );
+      setSavedMoodToday(v);
+      toast.success(t('today.toastMoodSaved'));
+    } catch {
+      toast.error(t('today.toastMoodFail'));
+    }
+    setMoodDialogOpen(false);
+  };
+
   const markCompleted = async () => {
     if (!workout) return;
     const ok = await markWorkoutCompleted(workout.id);
     if (ok) {
       fireConfetti();
       const streak = recovery.currentStreak + 1;
-      const milestoneMsg = getStreakMessage(streak);
-      toast.success(milestoneMsg || `🎉 Bra jobbat! ${streak} dagar i rad!`);
+      const milestone = getStreakMilestone(streak);
+      if (milestone === 30) toast.success(t('streak.m30'));
+      else if (milestone === 14) toast.success(t('streak.m14'));
+      else if (milestone === 7) toast.success(t('streak.m7'));
+      else toast.success(t('today.toastStreakDefault', { streak }));
     }
   };
 
@@ -185,7 +231,7 @@ export default function TodayView() {
     }
     if (!profile) {
       console.warn('[TodayView] generateNewSchedule: profile not loaded');
-      toast.error('Profil saknas. Kör klart quizen först.');
+      toast.error(t('today.toastNoProfile'));
       return;
     }
 
@@ -214,17 +260,46 @@ export default function TodayView() {
     carbs: nut?.actual_carbs ?? 0, fat: nut?.actual_fat ?? 0,
   };
 
-  const tipKey = workout?.planned_subtype || workout?.planned_type || 'rest';
-  const nutritionTip = nutritionTips[tipKey] || nutritionTips.rest;
+  const tipKey = (workout?.planned_subtype || workout?.planned_type || 'rest') as string;
+  const nutritionTipKey = [
+    'strength',
+    'long_distance',
+    'vo2max',
+    'rest',
+    'long_swim',
+    'technique_intervals',
+  ].includes(tipKey)
+    ? tipKey
+    : 'rest';
+  const nutritionTip = t(`today.nutritionTip.${nutritionTipKey}` as 'today.nutritionTip.rest');
   const { currentWeek, totalWeeks } = weeksProgress();
   const daysLeft = daysUntilRace();
-  const firstName = getUserFirstName(user, profile);
-  const greeting = profile?.trail_name
-    ? `Hej, ${profile.trail_name}!`
-    : getGreeting(firstName);
-  const motivation = getWorkoutMotivation(workout?.planned_sport, workout?.planned_type);
-  const swedishDate = new Date().toLocaleDateString('sv-SE', {
-    weekday: 'long', day: 'numeric', month: 'long',
+  const firstNameRaw = getUserFirstName(user, profile);
+  const firstName = firstNameRaw || t('common.nameFallback');
+  const greeting = useMemo(() => {
+    if (profile?.trail_name) return t('today.greetingTrail', { name: profile.trail_name });
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 11) return t('today.greetingMorning', { name: firstName });
+    if (hour >= 11 && hour < 17) return t('today.greetingDay', { name: firstName });
+    if (hour >= 17 && hour < 22) return t('today.greetingEvening', { name: firstName });
+    return t('today.greetingNight', { name: firstName });
+  }, [profile?.trail_name, firstName, t]);
+  const motivation = useMemo(() => {
+    const sport = workout?.planned_sport;
+    const type = workout?.planned_type;
+    if (!sport && !type) return t('today.motivationDefault');
+    if (sport === 'swim') return t('today.motivationSwim');
+    if (sport === 'run') return t('today.motivationRun');
+    if (sport === 'bike') return t('today.motivationBike');
+    if (type === 'strength') return t('today.motivationStrength');
+    if (type === 'rest') return t('today.motivationRest');
+    return t('today.motivationDefault');
+  }, [workout?.planned_sport, workout?.planned_type, t]);
+  const locale = i18n.language === 'en' ? 'en-US' : 'sv-SE';
+  const formattedDate = new Date().toLocaleDateString(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
   });
 
   return (
@@ -242,11 +317,11 @@ export default function TodayView() {
               {greeting}
             </h1>
             {recovery.currentStreak > 0 && (
-              <span className="streak-pill">🔥 {recovery.currentStreak} dagar i rad</span>
+              <span className="streak-pill">🔥 {t('today.streakDays', { count: recovery.currentStreak })}</span>
             )}
           </div>
           <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '14px', color: '#6B7B84', marginTop: '4px', textTransform: 'capitalize' }}>
-            {swedishDate}
+            {formattedDate}
           </p>
           <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', fontStyle: 'italic', color: '#8E9BA3', marginTop: '2px' }}>
             {motivation}
@@ -267,7 +342,7 @@ export default function TodayView() {
                   color: '#1A2B32',
                 }}
               >
-                Body Battery (senaste)
+                {t('today.bodyBatteryLatest')}
               </p>
               <p
                 className="font-data-num"
@@ -282,7 +357,7 @@ export default function TodayView() {
                   color: '#6B7B84',
                 }}
               >
-                Senast uppdaterad:{' '}
+                {t('today.lastUpdated')}{' '}
                 {new Date(
                   latestMetrics.garmin_measured_at ?? latestMetrics.created_at,
                 ).toLocaleString('sv-SE', {
@@ -292,16 +367,57 @@ export default function TodayView() {
               </p>
             </div>
           ) : (
-            <div className="card-glass py-4">
+            <div className="card-glass space-y-3 py-4">
+              <p
+                style={{
+                  fontFamily: "'Merriweather', serif",
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  color: '#1A2B32',
+                }}
+              >
+                {t('today.noRecoverySignal')}
+              </p>
               <p
                 style={{
                   fontFamily: "'Merriweather Sans', sans-serif",
                   fontSize: '14px',
                   color: '#6B7B84',
+                  lineHeight: 1.5,
                 }}
               >
-                Ingen Garmin Body Battery ännu — synkas när din enhet skickat data.
+                {t('today.noRecoveryBody')}
               </p>
+              {savedMoodToday != null && (
+                <p
+                  style={{
+                    fontFamily: "'Merriweather Sans', sans-serif",
+                    fontSize: '13px',
+                    color: '#5095AC',
+                    fontWeight: 600,
+                  }}
+                >
+                  {t('today.moodSaved', { value: savedMoodToday })}
+                </p>
+              )}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  className="touch-target w-full sm:flex-1"
+                  style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
+                  onClick={() => navigate('/settings')}
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  {t('today.toSettings')}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="touch-target w-full sm:flex-1"
+                  style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
+                  onClick={openMoodDialog}
+                >
+                  {t('today.logMood')}
+                </Button>
+              </div>
             </div>
           )}
         </motion.section>
@@ -309,7 +425,7 @@ export default function TodayView() {
         {/* 1. Insights */}
         <motion.section variants={cardVariant(5)} initial="hidden" animate="visible" className="mb-4 space-y-3">
           <h3 style={{ fontFamily: "'Merriweather', serif", fontSize: '16px', fontWeight: 600, color: '#1A2B32' }}>
-            💡 Insikter
+            💡 {t('today.insightsTitle')}
           </h3>
           {loadingInsights ? (
             <>
@@ -317,35 +433,54 @@ export default function TodayView() {
               <div className="card-glass animate-pulse h-20" />
             </>
           ) : insights.length === 0 ? (
-            <div className="card-glass" style={{ borderLeft: '3px solid #839F8D', background: 'rgba(131, 159, 141, 0.05)' }}>
-              <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '14px', color: '#3D4F58' }}>
-                ✅ Allt ser bra ut! Fortsätt fokusera på ditt mål.
-              </p>
+            <div className="space-y-3">
+              <div className="card-glass space-y-3 py-4">
+                <p
+                  style={{
+                    fontFamily: "'Merriweather', serif",
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    color: '#1A2B32',
+                  }}
+                >
+                  {t('today.insightsEmptyTitle')}
+                </p>
+                <p
+                  style={{
+                    fontFamily: "'Merriweather Sans', sans-serif",
+                    fontSize: '14px',
+                    color: '#6B7B84',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {t('today.insightsEmptyBody')}
+                </p>
+                <Button
+                  className="touch-target w-full sm:w-auto"
+                  style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
+                  onClick={() => navigate(!workout ? '/schedule' : '/settings')}
+                >
+                  {!workout ? t('today.openSchedule') : t('today.toSettingsShort')}
+                </Button>
+              </div>
+              <InsightCard rule={fallbackInsight} index={0} />
             </div>
           ) : (
             <>
-              {(showAllInsights ? insights.slice(0, 5) : insights.slice(0, 2)).map((rule, i) => (
+              {insightsLimited.map((rule, i) => (
                 <InsightCard key={rule.id} rule={rule} index={i} />
               ))}
-              {insights.length > 2 && !showAllInsights && (
-                <button
-                  onClick={() => setShowAllInsights(true)}
-                  style={{
-                    background: 'none', border: 'none', padding: '6px 0',
-                    fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px',
-                    fontWeight: 600, color: '#5095AC', cursor: 'pointer',
-                  }}
-                >
-                  Visa fler insikter →
-                </button>
-              )}
             </>
           )}
         </motion.section>
 
-        {/* 2. Recovery Ring */}
+        {/* 2. Recovery Ring — alltid yta; neutral placeholder utan live-signal så layouten inte kollapsar */}
         <motion.section variants={cardVariant(1)} initial="hidden" animate="visible" className="mb-4">
-          <RecoveryRing />
+          {loadingGarminBattery ? (
+            <div className="card-glass animate-pulse mx-auto h-[min(360px,70vw)] max-w-[320px] rounded-xl" />
+          ) : (
+            <RecoveryRing variant={hasRecoverySignal ? 'live' : 'placeholder'} />
+          )}
         </motion.section>
 
         {/* 3. Race Countdown */}
@@ -370,9 +505,9 @@ export default function TodayView() {
                   <div>
                     <p style={{ fontFamily: "'Merriweather', serif", fontSize: '16px', fontWeight: 600, color: '#1A2B32' }}>
                       {workout.completed && '✅ '}
-                      {sportLabels[workout.planned_sport] || workout.planned_type}
+                      {trSport(workout.planned_sport) || workout.planned_type}
                       {' – '}
-                      {subtypeLabels[workout.planned_subtype] || workout.planned_subtype}
+                      {trSubtype(workout.planned_subtype) || workout.planned_subtype}
                     </p>
                     <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', color: '#6B7B84', textTransform: 'capitalize' }}>
                       {workout.planned_type}
@@ -386,7 +521,7 @@ export default function TodayView() {
                     background: 'rgba(131, 159, 141, 0.15)',
                     fontFamily: "'Merriweather Sans', sans-serif", fontSize: '12px', fontWeight: 600, color: '#839F8D',
                   }}>
-                    ✅ Klart
+                    ✅ {t('today.workoutDone')}
                   </span>
                 ) : (
                   <span style={{
@@ -395,7 +530,7 @@ export default function TodayView() {
                     background: 'rgba(80, 149, 172, 0.1)',
                     fontFamily: "'Merriweather Sans', sans-serif", fontSize: '12px', fontWeight: 600, color: '#5095AC',
                   }}>
-                    Planerat
+                    {t('today.workoutPlanned')}
                   </span>
                 )}
               </div>
@@ -409,7 +544,9 @@ export default function TodayView() {
                       ))}
                       {workout.planned_details.split('\n').length > 3 && (
                         <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '12px', color: '#8E9BA3' }}>
-                          +{workout.planned_details.split('\n').length - 3} fler övningar
+                          {t('today.moreExercises', {
+                            count: workout.planned_details.split('\n').length - 3,
+                          })}
                         </p>
                       )}
                     </div>
@@ -429,7 +566,7 @@ export default function TodayView() {
                     className="flex-1 touch-target"
                     style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
                   >
-                    <Check className="mr-1.5 h-4 w-4" /> Markera som klart
+                    <Check className="mr-1.5 h-4 w-4" /> {t('today.markComplete')}
                   </Button>
                 )}
                 <Button
@@ -439,24 +576,52 @@ export default function TodayView() {
                   onClick={() => navigate('/schedule')}
                   style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
                 >
-                  Ändra plan
+                  {t('today.changePlan')}
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="card-glass flex flex-col items-center gap-3 py-6">
-              <span style={{ fontSize: '32px' }}>📋</span>
-              <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '14px', color: '#6B7B84' }}>
-                Inget pass planerat idag
-              </p>
-              <Button
-                size="sm"
-                onClick={generateNewSchedule}
-                className="touch-target"
-                style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
+            <div className="card-glass space-y-3 py-6">
+              <p
+                style={{
+                  fontFamily: "'Merriweather', serif",
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: '#1A2B32',
+                }}
               >
-                Generera schema
-              </Button>
+                {t('today.noWorkoutTitle')}
+              </p>
+              <p
+                style={{
+                  fontFamily: "'Merriweather Sans', sans-serif",
+                  fontSize: '14px',
+                  color: '#6B7B84',
+                  lineHeight: 1.5,
+                }}
+              >
+                {t('today.noWorkoutBody')}
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  size="sm"
+                  onClick={generateNewSchedule}
+                  className="touch-target w-full sm:flex-1"
+                  style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
+                >
+                  {t('today.generateSchedule')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="touch-target w-full sm:flex-1"
+                  onClick={() => navigate('/schedule')}
+                  style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {t('today.seeWeek')}
+                </Button>
+              </div>
             </div>
           )}
         </motion.section>
@@ -468,14 +633,14 @@ export default function TodayView() {
           ) : (
             <div className="card-glass space-y-3">
               <h3 style={{ fontFamily: "'Merriweather', serif", fontSize: '16px', fontWeight: 600, color: '#1A2B32', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                🍽️ Dagens kost
+                🍽️ {t('today.nutritionTitle')}
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {([
-                  { label: 'Kalorier', actual: nutActuals.kcal, target: nutTargets.kcal, unit: 'kcal' },
-                  { label: 'Protein', actual: nutActuals.protein, target: nutTargets.protein, unit: 'g' },
-                  { label: 'Kolhydrater', actual: nutActuals.carbs, target: nutTargets.carbs, unit: 'g' },
-                  { label: 'Fett', actual: nutActuals.fat, target: nutTargets.fat, unit: 'g' },
+                  { label: t('today.calories'), actual: nutActuals.kcal, target: nutTargets.kcal, unit: 'kcal' },
+                  { label: t('today.protein'), actual: nutActuals.protein, target: nutTargets.protein, unit: 'g' },
+                  { label: t('today.carbs'), actual: nutActuals.carbs, target: nutTargets.carbs, unit: 'g' },
+                  { label: t('today.fat'), actual: nutActuals.fat, target: nutTargets.fat, unit: 'g' },
                 ] as const).map((macro) => (
                   <div key={macro.label}>
                     <div className="flex justify-between" style={{ marginBottom: '2px' }}>
@@ -512,16 +677,16 @@ export default function TodayView() {
               onClick={() => navigate('/schedule')}
               style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', fontWeight: 600 }}
             >
-              <ClipboardList className="mr-1.5 h-4 w-4" /> Logga pass
+              <ClipboardList className="mr-1.5 h-4 w-4" /> {t('today.logWorkout')}
             </Button>
             <Button
               variant="outline"
               size="sm"
               className="flex-1 touch-target"
-              onClick={() => toast.info('Måltidsloggning kommer snart!')}
+              onClick={() => toast.info(t('today.mealComingSoon'))}
               style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', fontWeight: 600 }}
             >
-              <ChefHat className="mr-1.5 h-4 w-4" /> Logga måltid
+              <ChefHat className="mr-1.5 h-4 w-4" /> {t('today.logMeal')}
             </Button>
             <Button
               variant="outline"
@@ -530,10 +695,41 @@ export default function TodayView() {
               onClick={() => navigate('/schedule')}
               style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', fontWeight: 600 }}
             >
-              <Calendar className="mr-1.5 h-4 w-4" /> Se veckan
+              <Calendar className="mr-1.5 h-4 w-4" /> {t('today.seeWeek')}
             </Button>
           </div>
         </motion.section>
+
+        <Dialog open={moodDialogOpen} onOpenChange={setMoodDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle style={{ fontFamily: "'Merriweather', serif" }}>{t('today.moodDialogTitle')}</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground" style={{ fontFamily: "'Merriweather Sans', sans-serif" }}>
+              {t('today.moodDialogHint')}
+            </p>
+            <div className="py-4">
+              <div className="mb-2 flex justify-between text-sm text-muted-foreground">
+                <span>1</span>
+                <span className="font-data-num text-foreground text-lg">{moodSliderValue[0] ?? 3}</span>
+                <span>5</span>
+              </div>
+              <Slider
+                min={1}
+                max={5}
+                step={1}
+                value={moodSliderValue}
+                onValueChange={setMoodSliderValue}
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setMoodDialogOpen(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button onClick={saveMood}>{t('common.save')}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <BottomNav />
       </div>

@@ -3,9 +3,6 @@
 export interface RecoveryData {
   status: 'green' | 'yellow' | 'red';
   score: number;
-  statusLabel: string;
-  statusAdvice: string;
-  summary: string;
   sleepHours: number;
   hrvMs: number;
   bodyBattery: number;
@@ -16,9 +13,6 @@ const RECOVERY_STATES: RecoveryData[] = [
   {
     status: 'green',
     score: 78,
-    statusLabel: 'Redo – Kör som planerat',
-    statusAdvice: 'Alla system go. Dags att prestera!',
-    summary: 'Du sov 7.2h med bra djupsömn. HRV stabil. Kör som planerat.',
     sleepHours: 7.2,
     hrvMs: 58,
     bodyBattery: 72,
@@ -27,9 +21,6 @@ const RECOVERY_STATES: RecoveryData[] = [
   {
     status: 'yellow',
     score: 52,
-    statusLabel: 'Måttlig – Lyssna på kroppen',
-    statusAdvice: 'Du kan träna men anpassa intensiteten.',
-    summary: 'Sömnen var okej men HRV lite lägre än vanligt. Undvik maxinsatser idag.',
     sleepHours: 6.4,
     hrvMs: 42,
     bodyBattery: 55,
@@ -38,9 +29,6 @@ const RECOVERY_STATES: RecoveryData[] = [
   {
     status: 'red',
     score: 28,
-    statusLabel: 'Vila – Prioritera återhämtning',
-    statusAdvice: 'Kroppen behöver vila. Byt till lättare aktivitet.',
-    summary: 'Dålig sömn och låg HRV. Prioritera återhämtning idag – promenad eller yoga.',
     sleepHours: 5.1,
     hrvMs: 28,
     bodyBattery: 32,
@@ -48,11 +36,19 @@ const RECOVERY_STATES: RecoveryData[] = [
   },
 ];
 
-// MOCK: streak milestone messages
+export function getStreakMilestone(streak: number): 30 | 14 | 7 | null {
+  if (streak >= 30) return 30;
+  if (streak >= 14) return 14;
+  if (streak >= 7) return 7;
+  return null;
+}
+
+/** @deprecated use getStreakMilestone + i18n */
 export function getStreakMessage(streak: number): string | null {
-  if (streak >= 30) return '🏆 EN MÅNAD! Legend.';
-  if (streak >= 14) return '🔥🔥 Två veckor non-stop! Du är unstoppable!';
-  if (streak >= 7) return '🌟 En hel vecka! Otroligt!';
+  const m = getStreakMilestone(streak);
+  if (m === 30) return '🏆 EN MÅNAD! Legend.';
+  if (m === 14) return '🔥🔥 Två veckor non-stop! Du är unstoppable!';
+  if (m === 7) return '🌟 En hel vecka! Otroligt!';
   return null;
 }
 

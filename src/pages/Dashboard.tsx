@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +11,7 @@ import { MountainTimeline } from '@/components/MountainTimeline';
 import { RaceReadinessGauge } from '@/components/RaceReadinessGauge';
 import { CoachingCard } from '@/components/CoachingCard';
 import { calculateReadiness } from '@/lib/raceReadiness';
-import { getDailyCoachingMessage } from '@/lib/coachingEngine';
+import { getDailyCoachingMessage, type CoachingMessage } from '@/lib/coachingEngine';
 import {
   Battery, Moon, Heart, Target, Dumbbell, Bike, Waves, Check,
   ChevronDown, ChevronUp, Plus,
@@ -26,11 +27,6 @@ const sportIcons: Record<string, React.ReactNode> = {
   strength: <Dumbbell className="h-5 w-5" />,
 };
 
-const sportLabels: Record<string, string> = { bike: 'Cykling', run: 'Löpning', swim: 'Simning', strength: 'Styrka' };
-const subtypeLabels: Record<string, string> = {
-  long_distance: 'Långdistans', vo2max: 'VO2max', upper: 'Överkropp', lower: 'Underkropp',
-  long_swim: 'Långsim', technique_intervals: 'Teknik & Intervaller',
-};
 const typeColors: Record<string, string> = {
   cardio: 'bg-primary/10 text-primary border-primary/20',
   strength: 'bg-secondary/10 text-secondary border-secondary/20',
@@ -54,18 +50,17 @@ function fmtDate(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
-const DAY_LABELS = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön'];
-
-const DISTANCE_ESTIMATES: Record<string, { value: number; unit: string; sport: string }> = {
-  'cardio_long_distance_bike': { value: 60, unit: 'km', sport: 'cykling' },
-  'cardio_vo2max_bike': { value: 30, unit: 'km', sport: 'cykling' },
-  'cardio_long_distance_run': { value: 15, unit: 'km', sport: 'löpning' },
-  'cardio_vo2max_run': { value: 8, unit: 'km', sport: 'löpning' },
-  'swim_long_swim_swim': { value: 2000, unit: 'm', sport: 'simning' },
-  'swim_technique_intervals_swim': { value: 1500, unit: 'm', sport: 'simning' },
+const DISTANCE_ESTIMATES: Record<string, { value: number; unit: string; sport: 'bike' | 'run' | 'swim' }> = {
+  cardio_long_distance_bike: { value: 60, unit: 'km', sport: 'bike' },
+  cardio_vo2max_bike: { value: 30, unit: 'km', sport: 'bike' },
+  cardio_long_distance_run: { value: 15, unit: 'km', sport: 'run' },
+  cardio_vo2max_run: { value: 8, unit: 'km', sport: 'run' },
+  swim_long_swim_swim: { value: 2000, unit: 'm', sport: 'swim' },
+  swim_technique_intervals_swim: { value: 1500, unit: 'm', sport: 'swim' },
 };
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { profile: userProfile } = useUserProfile();
@@ -143,36 +138,33 @@ export default function Dashboard() {
   // Rotating stat (changes daily)
   const rotatingStat = useMemo(() => {
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-    const completedEntries = allSchedule.filter(s => s.completed);
+    const completedEntries = allSchedule.filter((s) => s.completed);
     const stats: string[] = [];
 
-    // Bike km
     const bikeKm = completedEntries.reduce((sum, s) => {
       const key = `${s.planned_type}_${s.planned_subtype}_${s.planned_sport}`;
-      return sum + (DISTANCE_ESTIMATES[key]?.sport === 'cykling' ? DISTANCE_ESTIMATES[key].value : 0);
+      return sum + (DISTANCE_ESTIMATES[key]?.sport === 'bike' ? DISTANCE_ESTIMATES[key].value : 0);
     }, 0);
-    if (bikeKm > 0) stats.push(`Du har cyklat ${bikeKm} km hittills 🚴`);
+    if (bikeKm > 0) stats.push(t('dashboard.statsBike', { km: bikeKm }));
 
-    // Run km
     const runKm = completedEntries.reduce((sum, s) => {
       const key = `${s.planned_type}_${s.planned_subtype}_${s.planned_sport}`;
-      return sum + (DISTANCE_ESTIMATES[key]?.sport === 'löpning' ? DISTANCE_ESTIMATES[key].value : 0);
+      return sum + (DISTANCE_ESTIMATES[key]?.sport === 'run' ? DISTANCE_ESTIMATES[key].value : 0);
     }, 0);
-    if (runKm > 0) stats.push(`Du har sprungit ${runKm} km 🏃`);
+    if (runKm > 0) stats.push(t('dashboard.statsRun', { km: runKm }));
 
-    // Swim m
     const swimM = completedEntries.reduce((sum, s) => {
       const key = `${s.planned_type}_${s.planned_subtype}_${s.planned_sport}`;
-      return sum + (DISTANCE_ESTIMATES[key]?.sport === 'simning' ? DISTANCE_ESTIMATES[key].value : 0);
+      return sum + (DISTANCE_ESTIMATES[key]?.sport === 'swim' ? DISTANCE_ESTIMATES[key].value : 0);
     }, 0);
-    if (swimM > 0) stats.push(`Du har simmat ${swimM} m 🏊`);
+    if (swimM > 0) stats.push(t('dashboard.statsSwim', { m: swimM }));
 
-    const strengthCount = completedEntries.filter(s => s.planned_type === 'strength').length;
-    if (strengthCount > 0) stats.push(`${strengthCount} styrkepass genomförda 💪`);
+    const strengthCount = completedEntries.filter((s) => s.planned_type === 'strength').length;
+    if (strengthCount > 0) stats.push(t('dashboard.statsStrength', { count: strengthCount }));
 
-    if (stats.length === 0) return 'Starta din resa idag!';
+    if (stats.length === 0) return t('dashboard.statsStart');
     return stats[dayOfYear % stats.length];
-  }, [allSchedule]);
+  }, [allSchedule, t]);
 
   // Race readiness
   const readiness = useMemo(() => {
@@ -188,9 +180,8 @@ export default function Dashboard() {
 
   const hasEnoughData = allSchedule.filter(s => s.date <= fmtDate(new Date())).length >= 7;
 
-  // Coaching message
-  const coaching = useMemo(() => {
-    if (!goal) return { emoji: '🏔️', message: 'Sätt ditt mål i inställningarna för att aktivera coaching!' };
+  const coaching: CoachingMessage = useMemo(() => {
+    if (!goal) return { emoji: '🏔️', messageKey: 'coaching.noGoal' };
     const goalDate = new Date(goal.goal_date);
     const daysRemaining = Math.max(0, Math.ceil((goalDate.getTime() - Date.now()) / 86400000));
     const trainingStart = new Date(goalDate);
@@ -199,17 +190,50 @@ export default function Dashboard() {
     const elapsed = (Date.now() - trainingStart.getTime()) / 86400000;
     const progressPct = Math.min(100, (elapsed / totalDays) * 100);
 
-    return getDailyCoachingMessage(allSchedule, allNutrition, {
-      goalName: goal.goal_name, goalDate: goal.goal_date, daysRemaining, progressPct,
-    }, todaySchedule);
+    return getDailyCoachingMessage(
+      allSchedule,
+      allNutrition,
+      {
+        goalName: goal.goal_name,
+        goalDate: goal.goal_date,
+        daysRemaining,
+        progressPct,
+      },
+      todaySchedule,
+    );
   }, [goal, allSchedule, allNutrition, todaySchedule]);
 
-  // Weekly chart data
+  const coachingText = useMemo(() => {
+    const p: Record<string, string | number> = { ...(coaching.params || {}) };
+    if ('labelKey' in p && typeof p.labelKey === 'string') {
+      p.label = t(`coaching.milestones.${p.labelKey}`);
+      delete p.labelKey;
+    }
+    if ('sportKey' in p && typeof p.sportKey === 'string') {
+      p.type = t(`sports.${p.sportKey}`);
+      delete p.sportKey;
+    }
+    return t(coaching.messageKey, p);
+  }, [coaching, t]);
+
+  const weekdayLabels = useMemo(
+    () => [t('weekdays.mon'), t('weekdays.tue'), t('weekdays.wed'), t('weekdays.thu'), t('weekdays.fri'), t('weekdays.sat'), t('weekdays.sun')],
+    [t],
+  );
+
   const chartData = weekDates.map((date, i) => {
     const dateStr = fmtDate(date);
     const entry = weekNutrition.find((n) => n.date === dateStr);
-    return { day: DAY_LABELS[i], consumed: entry?.actual_kcal || 0, target: entry?.target_kcal || 0 };
+    return { day: weekdayLabels[i], consumed: entry?.actual_kcal || 0, target: entry?.target_kcal || 0 };
   });
+
+  const trSport = (s?: string | null) =>
+    s && ['bike', 'run', 'swim', 'strength'].includes(s) ? t(`sports.${s}`) : s || '';
+  const trSubtype = (s?: string | null) =>
+    s &&
+    ['long_distance', 'vo2max', 'upper', 'lower', 'long_swim', 'technique_intervals'].includes(s)
+      ? t(`subtypes.${s}`)
+      : s || '';
 
   const currentWeight = latestMetrics?.weight || userProfile?.weight || profile?.current_weight || 82;
   const weekDeficit = weekNutrition.reduce((sum, n) => sum + ((n.actual_kcal || 0) - (n.target_kcal || 0)), 0);
@@ -232,8 +256,8 @@ export default function Dashboard() {
         ) : (
           <div className="card-athletic mb-4 flex flex-col items-center gap-2 py-6">
             <span className="text-2xl">🏔️</span>
-            <p className="text-sm text-muted-foreground">Sätt ditt mål i inställningarna</p>
-            <Button variant="outline" size="sm" onClick={() => navigate('/settings')}>Sätt ditt mål</Button>
+            <p className="text-sm text-muted-foreground">{t('dashboard.setGoalHint')}</p>
+            <Button variant="outline" size="sm" onClick={() => navigate('/settings')}>{t('dashboard.setGoalCta')}</Button>
           </div>
         )
       )}
@@ -242,11 +266,11 @@ export default function Dashboard() {
       {showRaceCountdown && <RaceReadinessGauge breakdown={readiness} hasEnoughData={hasEnoughData} />}
 
       {/* 3. Smart Coaching Message */}
-      <CoachingCard emoji={coaching.emoji} message={coaching.message} />
+      <CoachingCard emoji={coaching.emoji} message={coachingText} />
 
       {/* 4. Today's workout */}
       <div className="card-athletic mb-4">
-        <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Dagens pass</p>
+        <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">{t('dashboard.todaysWorkout')}</p>
         {todaySchedule ? (
           <div className="space-y-3">
             <div className="flex items-center gap-3">
@@ -255,7 +279,7 @@ export default function Dashboard() {
               </div>
               <div className="flex-1">
                 <p className="font-semibold">
-                  {sportLabels[todaySchedule.planned_sport] || todaySchedule.planned_sport} – {subtypeLabels[todaySchedule.planned_subtype] || todaySchedule.planned_subtype}
+                  {trSport(todaySchedule.planned_sport)} – {trSubtype(todaySchedule.planned_subtype)}
                 </p>
                 {todaySchedule.planned_details && (
                   <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{todaySchedule.planned_details}</p>
@@ -264,31 +288,31 @@ export default function Dashboard() {
             </div>
             {todaySchedule.completed ? (
               <div className="flex items-center gap-2 rounded-xl bg-rest/10 px-3 py-2 text-sm text-rest">
-                <Check className="h-4 w-4" /> Genomfört
+                <Check className="h-4 w-4" /> {t('dashboard.completed')}
               </div>
             ) : (
-              <Button className="w-full touch-target" onClick={() => navigate('/schedule')}>Starta pass</Button>
+              <Button className="w-full touch-target" onClick={() => navigate('/schedule')}>{t('dashboard.startWorkout')}</Button>
             )}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Inget pass planerat idag</p>
+          <p className="text-sm text-muted-foreground">{t('dashboard.noWorkoutToday')}</p>
         )}
       </div>
 
       {/* 5. Nutrition summary - only if show_nutrition */}
       {showNutrition && (
         <div className="card-athletic mb-4 cursor-pointer transition-all duration-200 hover:shadow-md" onClick={() => navigate('/nutrition')}>
-          <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Dagens näring</p>
+          <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">{t('dashboard.nutritionToday')}</p>
           {todayNutrition ? (
             <div className="flex items-center justify-around">
-              <MacroRing label="Kcal" current={todayNutrition.actual_kcal} target={todayNutrition.target_kcal} unit="" color="hsl(var(--primary))" size={64} />
-              <MacroRing label="Protein" current={todayNutrition.actual_protein} target={todayNutrition.target_protein} unit="g" color="hsl(var(--nutrition-protein))" size={64} />
-              <MacroRing label="Carbs" current={todayNutrition.actual_carbs} target={todayNutrition.target_carbs} unit="g" color="hsl(var(--nutrition-carbs))" size={64} />
-              <MacroRing label="Fett" current={todayNutrition.actual_fat} target={todayNutrition.target_fat} unit="g" color="hsl(var(--nutrition-fat))" size={64} />
+              <MacroRing label={t('today.calories')} current={todayNutrition.actual_kcal} target={todayNutrition.target_kcal} unit="" color="hsl(var(--primary))" size={64} />
+              <MacroRing label={t('today.protein')} current={todayNutrition.actual_protein} target={todayNutrition.target_protein} unit="g" color="hsl(var(--nutrition-protein))" size={64} />
+              <MacroRing label={t('today.carbs')} current={todayNutrition.actual_carbs} target={todayNutrition.target_carbs} unit="g" color="hsl(var(--nutrition-carbs))" size={64} />
+              <MacroRing label={t('today.fat')} current={todayNutrition.actual_fat} target={todayNutrition.target_fat} unit="g" color="hsl(var(--nutrition-fat))" size={64} />
             </div>
           ) : (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Plus className="h-4 w-4" /><span>Ingen måltid loggad än</span>
+              <Plus className="h-4 w-4" /><span>{t('dashboard.noMealLogged')}</span>
             </div>
           )}
         </div>
@@ -297,7 +321,7 @@ export default function Dashboard() {
       {/* 6. Weekly nutrition chart - only if show_nutrition */}
       {showNutrition && weekNutrition.length > 0 && (
         <div className="card-athletic mb-4">
-          <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Veckans kalorier</p>
+          <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">{t('dashboard.weekCalories')}</p>
           <ResponsiveContainer width="100%" height={120}>
             <BarChart data={chartData} barGap={2}>
               <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'hsl(200 12% 50%)' }} axisLine={false} tickLine={false} />
@@ -315,7 +339,7 @@ export default function Dashboard() {
 
       {/* Week summary dots */}
       <div className="card-athletic mb-4">
-        <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Denna vecka</p>
+        <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">{t('dashboard.thisWeek')}</p>
         <div className="mb-2 flex items-center justify-around">
           {weekDates.map((date) => {
             const dateStr = fmtDate(date);
@@ -323,7 +347,7 @@ export default function Dashboard() {
             const isToday = dateStr === fmtDate(new Date());
             return (
               <div key={dateStr} className="flex flex-col items-center gap-1">
-                <span className="text-[10px] text-muted-foreground">{DAY_LABELS[(date.getDay() + 6) % 7]}</span>
+                <span className="text-[10px] text-muted-foreground">{weekdayLabels[(date.getDay() + 6) % 7]}</span>
                 <div className={`h-4 w-4 rounded-full border-2 transition-all duration-200 ${
                   workout?.completed ? 'border-rest bg-rest'
                   : workout ? `border-primary ${isToday ? 'bg-primary/30' : 'bg-transparent'}`
@@ -333,7 +357,7 @@ export default function Dashboard() {
             );
           })}
         </div>
-        <p className="text-center text-xs text-muted-foreground">{completedCount} av {totalPlanned} pass genomförda denna vecka</p>
+        <p className="text-center text-xs text-muted-foreground">{t('dashboard.weekSummary', { completed: completedCount, total: totalPlanned })}</p>
       </div>
 
       {/* Quick stats */}
@@ -341,12 +365,12 @@ export default function Dashboard() {
         <div className="card-athletic flex flex-col items-center">
           <Battery className="mb-1 h-4 w-4 text-rest" />
           <span className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{latestMetrics?.body_battery ?? '–'}</span>
-          <span className="text-[10px] text-muted-foreground">Body Battery</span>
+          <span className="text-[10px] text-muted-foreground">{t('dashboard.bodyBatteryShort')}</span>
         </div>
         <div className="card-athletic flex flex-col items-center">
           <Moon className="mb-1 h-4 w-4 text-swim" />
           <span className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{latestMetrics?.sleep_hours ?? '–'}</span>
-          <span className="text-[10px] text-muted-foreground">Sömn (h)</span>
+          <span className="text-[10px] text-muted-foreground">{t('dashboard.sleepH')}</span>
         </div>
         <div className="card-athletic flex flex-col items-center">
           <Heart className="mb-1 h-4 w-4 text-destructive" />
@@ -358,19 +382,19 @@ export default function Dashboard() {
       {/* 7. Recomp progress - only if show_recomp */}
       {showRecomp && (
         <div className="card-athletic mb-4">
-          <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Recomp-mål</p>
+          <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">{t('dashboard.recompGoal')}</p>
           <div className="flex items-center justify-between">
             <div>
               <p className="font-data text-lg font-bold" style={{ fontFeatureSettings: "'tnum' 1" }}>{currentWeight} kg</p>
               <p className="text-xs text-muted-foreground">
-                Mål: {userProfile?.target_weight ? `${userProfile.target_weight} kg` : '78–80 kg @ 15% bf'}
+                {t('dashboard.goalRange')} {userProfile?.target_weight ? `${userProfile.target_weight} kg` : '78–80 kg @ 15% bf'}
               </p>
             </div>
             <div className="text-right">
               <p className="font-data text-sm font-bold text-muted-foreground" style={{ fontFeatureSettings: "'tnum' 1" }}>
                 {weekDeficit > 0 ? '+' : ''}{weekDeficit} kcal
               </p>
-              <p className="text-[10px] text-muted-foreground">veckobalans</p>
+              <p className="text-[10px] text-muted-foreground">{t('dashboard.weeklyBalance')}</p>
             </div>
           </div>
         </div>
@@ -380,20 +404,20 @@ export default function Dashboard() {
       <Collapsible open={zonesOpen} onOpenChange={setZonesOpen}>
         <div className="card-athletic mb-4">
           <CollapsibleTrigger className="flex w-full items-center justify-between">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Mina zoner</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('dashboard.myZones')}</p>
             {zonesOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-3 space-y-2">
             <div className="rounded-xl border border-border bg-muted/50 p-3">
-              <p className="text-xs font-semibold text-primary">🚴 Cykel</p>
+              <p className="text-xs font-semibold text-primary">{t('dashboard.bikeZones')}</p>
               <p className="text-sm">Z2: 140-165W | Z5: 250-270W</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-3">
-              <p className="text-xs font-semibold text-primary">🏃 Löpning</p>
+              <p className="text-xs font-semibold text-primary">{t('dashboard.runZones')}</p>
               <p className="text-sm">Z2: 5:15-5:45/km | Z5: 4:00-4:15/km</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/50 p-3">
-              <p className="text-xs font-semibold text-muted-foreground">Tröskelvärden</p>
+              <p className="text-xs font-semibold text-muted-foreground">{t('dashboard.thresholds')}</p>
               <p className="text-sm">FTP: {profile?.ftp_watts || 230}W | Löptröskel: {profile?.run_threshold_pace || '4:30'}/km</p>
             </div>
           </CollapsibleContent>
@@ -402,7 +426,7 @@ export default function Dashboard() {
 
       {/* Training phase */}
       <div className="card-athletic">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">Träningsfas</p>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('dashboard.trainingPhase')}</p>
         <p className="mt-1 text-lg font-bold capitalize">{profile?.training_phase || 'Base'}</p>
       </div>
 

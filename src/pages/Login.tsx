@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { toast } from 'sonner';
 import { AnimatedTitle } from '@/components/AnimatedTitle';
 
 export default function Login() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -45,7 +47,7 @@ export default function Login() {
       options: { redirectTo: window.location.origin },
     });
     if (error) {
-      toast.error('Google-inloggning misslyckades. Försök igen eller använd magic link.');
+      toast.error(t('login.googleFailed'));
       setGoogleLoading(false);
     }
   };
@@ -78,7 +80,7 @@ export default function Login() {
               textAlign: 'center',
             }}
           >
-            Din väg. Dina mål. Dina insikter.
+            {t('login.tagline')}
           </motion.p>
         </div>
 
@@ -87,9 +89,9 @@ export default function Login() {
             <div className="card-glass p-6 md:px-12 md:py-10 space-y-4 text-center">
               <CheckCircle className="mx-auto h-12 w-12 text-primary" />
               <div>
-                <p className="text-lg font-semibold" style={{ color: '#1A2B32' }}>Kolla din inkorg!</p>
+                <p className="text-lg font-semibold" style={{ color: '#1A2B32' }}>{t('login.checkInbox')}</p>
                 <p className="mt-1 text-sm" style={{ color: '#6B7B84' }}>
-                  Vi har skickat en inloggningslänk till <strong style={{ color: '#1A2B32' }}>{email}</strong>.
+                  {t('login.linkSentTo')} <strong style={{ color: '#1A2B32' }}>{email}</strong>.
                 </p>
               </div>
               <button
@@ -106,7 +108,7 @@ export default function Login() {
                   textDecoration: cooldown > 0 ? 'none' : 'underline',
                 }}
               >
-                {cooldown > 0 ? `Skicka igen (${cooldown}s)` : 'Skicka igen'}
+                {cooldown > 0 ? t('login.resendCooldown', { seconds: cooldown }) : t('login.resend')}
               </button>
             </div>
           ) : (
@@ -115,7 +117,7 @@ export default function Login() {
               className="card-glass p-6 md:px-12 md:py-10 space-y-5"
             >
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium" style={{ color: '#3D4F58' }}>Din e-postadress</Label>
+                <Label htmlFor="email" className="text-sm font-medium" style={{ color: '#3D4F58' }}>{t('login.yourEmail')}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -140,7 +142,7 @@ export default function Login() {
                 ) : (
                   <Mail className="mr-2 h-4 w-4" />
                 )}
-                Skicka inloggningslänk →
+                {t('login.sendMagicLink')}
               </Button>
               <p
                 className="flex items-center justify-center gap-1.5 text-center"
@@ -151,7 +153,7 @@ export default function Login() {
                 }}
               >
                 <Lock className="h-3.5 w-3.5" />
-                Inget lösenord behövs. Vi skickar en säker länk till din email.
+                {t('login.noPasswordHint')}
               </p>
 
               {/* Divider */}
@@ -164,7 +166,7 @@ export default function Login() {
                     color: '#8E9BA3',
                   }}
                 >
-                  eller
+                  {t('common.or')}
                 </span>
                 <div className="h-px flex-1 bg-border" />
               </div>
@@ -208,7 +210,7 @@ export default function Login() {
                     <path d="M10 3.977c1.468 0 2.786.505 3.823 1.496l2.868-2.868C14.959.99 12.695 0 10 0 6.09 0 2.71 2.24 1.064 5.51l3.34 2.59C5.19 5.736 7.395 3.977 10 3.977z" fill="#EA4335"/>
                   </svg>
                 )}
-                Logga in med Google
+                {t('login.googleSignIn')}
               </button>
             </form>
           )}

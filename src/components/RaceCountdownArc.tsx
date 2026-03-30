@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 
 const ARC_W = 140;
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function RaceCountdownArc({ currentWeek, totalWeeks, daysLeft, goalName }: Props) {
+  const { t } = useTranslation();
   const pct = Math.min(1, currentWeek / totalWeeks);
   const offset = SEMI_CIRC * (1 - pct);
   // Split goal name at space before last word for two-line display
@@ -106,7 +108,7 @@ export function RaceCountdownArc({ currentWeek, totalWeeks, daysLeft, goalName }
             marginTop: '2px',
           }}
         >
-          Vecka {currentWeek} av {totalWeeks} • {daysLeft} dagar kvar
+          {t('raceCountdown.weekProgress', { current: currentWeek, total: totalWeeks, days: daysLeft })}
         </p>
       </div>
     </div>

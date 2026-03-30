@@ -1,19 +1,25 @@
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Calendar, Apple, BarChart3, Settings } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
-const allTabs = [
-  { path: '/', label: 'Idag', icon: Home, always: true },
-  { path: '/schedule', label: 'Schema', icon: Calendar, always: true },
-  { path: '/nutrition', label: 'Kost', icon: Apple, key: 'nutrition' },
-  { path: '/dashboard', label: 'Översikt', icon: BarChart3, always: true },
-  { path: '/settings', label: 'Inställningar', icon: Settings, always: true },
-];
-
 export function BottomNav() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { profile } = useUserProfile();
+
+  const allTabs = useMemo(
+    () => [
+      { path: '/', label: t('nav.today'), icon: Home, always: true as const },
+      { path: '/schedule', label: t('nav.schedule'), icon: Calendar, always: true as const },
+      { path: '/nutrition', label: t('nav.nutrition'), icon: Apple, key: 'nutrition' as const },
+      { path: '/dashboard', label: t('nav.dashboard'), icon: BarChart3, always: true as const },
+      { path: '/settings', label: t('nav.settings'), icon: Settings, always: true as const },
+    ],
+    [t],
+  );
 
   const tabs = allTabs.filter(tab => {
     if (tab.always) return true;

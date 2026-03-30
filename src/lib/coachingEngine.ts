@@ -21,6 +21,12 @@ interface GoalInfo {
   progressPct: number;
 }
 
+export type CoachingMessage = {
+  emoji: string;
+  messageKey: string;
+  params?: Record<string, string | number | undefined>;
+};
+
 function fmtDate(d: Date): string {
   return d.toISOString().split('T')[0];
 }
@@ -30,112 +36,120 @@ export function getDailyCoachingMessage(
   nutrition: NutritionEntry[],
   goal: GoalInfo,
   today: ScheduleEntry | null,
-): { emoji: string; message: string } {
+): CoachingMessage {
   const todayStr = fmtDate(new Date());
   const yesterdayDate = new Date();
   yesterdayDate.setDate(yesterdayDate.getDate() - 1);
   const yesterdayStr = fmtDate(yesterdayDate);
 
-  const sorted = [...schedule].filter(s => s.date <= todayStr).sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = [...schedule].filter((s) => s.date <= todayStr).sort((a, b) => b.date.localeCompare(a.date));
 
-  // Current streak
   let streak = 0;
   for (const s of sorted) {
     if (s.completed) streak++;
     else break;
   }
 
-  // Recent completed (last 3 days excluding today)
-  const recent3 = sorted.filter(s => s.date < todayStr).slice(0, 3);
-  const allRecentCompleted = recent3.length >= 3 && recent3.every(s => s.completed);
+  const recent3 = sorted.filter((s) => s.date < todayStr).slice(0, 3);
+  const allRecentCompleted = recent3.length >= 3 && recent3.every((s) => s.completed);
 
-  // Next 2 days
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const dayAfter = new Date();
   dayAfter.setDate(dayAfter.getDate() + 2);
-  const nextScheduled = schedule.filter(s => s.date === fmtDate(tomorrow) || s.date === fmtDate(dayAfter));
-  const noRestSoon = nextScheduled.length > 0 && nextScheduled.every(s => s.planned_type !== 'rest');
+  const nextScheduled = schedule.filter((s) => s.date === fmtDate(tomorrow) || s.date === fmtDate(dayAfter));
+  const noRestSoon = nextScheduled.length > 0 && nextScheduled.every((s) => s.planned_type !== 'rest');
 
-  // P1: Recovery warning
   if (allRecentCompleted && noRestSoon) {
-    return { emoji: '🧘', message: `Du har kört hårt i ${recent3.length} dagar. Lyssna på kroppen – en extra vilodag kan göra dig starkare.` };
+    return { emoji: '🧘', messageKey: 'coaching.hardBlock', params: { days: recent3.length } };
   }
 
-  // P2: Streak celebration
   if (streak >= 14) {
-    return { emoji: '💪', message: `${streak} dagars streak – imponerande dedication! Du bygger en solid bas för Ironman.` };
+    return { emoji: '💪', messageKey: 'coaching.streak14', params: { streak } };
   }
   if (streak >= 7) {
-    return { emoji: '🔥', message: `${streak} dagar i rad! Din disciplin bygger race-fitness varje dag. Fortsätt så.` };
+    return { emoji: '🔥', messageKey: 'coaching.streak7', params: { streak } };
   }
 
-  // P3: Missed workout
-  const yesterday = sorted.find(s => s.date === yesterdayStr);
+  const yesterday = sorted.find((s) => s.date === yesterdayStr);
   if (yesterday && !yesterday.completed) {
-    const todayType = today?.planned_sport || today?.planned_type || 'passet';
-    return { emoji: '💪', message: `Alla missar ett pass ibland. Det som räknas är att du är här idag. Kör dagens ${todayType}!` };
+    const sportKey = today?.planned_sport || 'run';
+    return { emoji: '💪', messageKey: 'coaching.missed', params: { sportKey } };
   }
 
-  // P4: Nutrition gap
-  const yesterdayNut = nutrition.find(n => n.date === yesterdayStr);
+  const yesterdayNut = nutrition.find((n) => n.date === yesterdayStr);
   if (yesterdayNut) {
-    if (yesterdayNut.target_protein && yesterdayNut.actual_protein && yesterdayNut.actual_protein < yesterdayNut.target_protein * 0.8) {
-      return { emoji: '🥩', message: `Proteinmålet nåddes inte igår (${yesterdayNut.actual_protein}g av ${yesterdayNut.target_protein}g). Prioritera protein idag – det skyddar musklerna under fettförlust.` };
+    if (
+      yesterdayNut.target_protein &&
+      yesterdayNut.actual_protein &&
+      yesterdayNut.actual_protein < yesterdayNut.target_protein * 0.8
+    ) {
+      return {
+        emoji: '🥩',
+        messageKey: 'coaching.proteinLow',
+        params: { actual: yesterdayNut.actual_protein, target: yesterdayNut.target_protein },
+      };
     }
     if (yesterdayNut.target_kcal && yesterdayNut.actual_kcal && yesterdayNut.actual_kcal < yesterdayNut.target_kcal * 0.7) {
-      const ydSched = schedule.find(s => s.date === yesterdayStr);
+      const ydSched = schedule.find((s) => s.date === yesterdayStr);
       if (ydSched?.planned_subtype === 'long_distance') {
-        return { emoji: '⚡', message: 'Du åt för lite igår för ett långpass. Underfueling skadar prestanda och återhämtning. Fuel up idag!' };
+        return { emoji: '⚡', messageKey: 'coaching.underfuelLong' };
       }
     }
   }
 
-  // P5: Milestone approaching
-  const milestones = [
-    { pct: 25, label: 'Grundfas klar 🏋️' },
-    { pct: 50, label: 'Halvvägs! ⚡' },
-    { pct: 75, label: 'Race-form 🔥' },
-    { pct: 90, label: 'Taper 🧘' },
+  const milestones: { pct: number; labelKey: string }[] = [
+    { pct: 25, labelKey: 'm25' },
+    { pct: 50, labelKey: 'm50' },
+    { pct: 75, labelKey: 'm75' },
+    { pct: 90, labelKey: 'm90' },
   ];
   for (const m of milestones) {
     if (goal.progressPct < m.pct) {
       const totalDays = goal.daysRemaining / (1 - goal.progressPct / 100);
-      const daysToMilestone = Math.round((m.pct - goal.progressPct) / 100 * totalDays);
+      const daysToMilestone = Math.round(((m.pct - goal.progressPct) / 100) * totalDays);
       if (daysToMilestone <= 3 && daysToMilestone >= 0) {
-        return { emoji: '🏔️', message: `Om ${daysToMilestone} dagar når du ${m.label}! Du har kommit så långt – varje pass räknas nu.` };
+        return {
+          emoji: '🏔️',
+          messageKey: 'coaching.milestoneSoon',
+          params: { days: daysToMilestone, labelKey: m.labelKey },
+        };
       }
       break;
     }
   }
 
-  // P6: Race countdown
   if (goal.daysRemaining <= 7) {
-    return { emoji: '🏆', message: `RACE WEEK! ${goal.goalName} om ${goal.daysRemaining} dagar. Du har gjort jobbet. Nu handlar det om vila, carbs och mental förberedelse.` };
+    return {
+      emoji: '🏆',
+      messageKey: 'coaching.raceWeek',
+      params: { goalName: goal.goalName, days: goal.daysRemaining },
+    };
   }
   if (goal.daysRemaining <= 30) {
-    return { emoji: '🏁', message: `${goal.daysRemaining} dagar kvar till ${goal.goalName}. Taper-fasen börjar snart – lita på din träning.` };
+    return {
+      emoji: '🏁',
+      messageKey: 'coaching.raceMonth',
+      params: { goalName: goal.goalName, days: goal.daysRemaining },
+    };
   }
 
-  // P7: Training type specific
   if (today) {
     const key = `${today.planned_type}_${today.planned_subtype}_${today.planned_sport}`;
-    const msgs: Record<string, { emoji: string; message: string }> = {
-      'strength_upper_': { emoji: '💪', message: 'Överkroppspass idag. Varje rep bygger stabilitet för simningen och löpningen.' },
-      'strength_lower_': { emoji: '🦵', message: 'Benstyrka idag. Starka ben = snabbare km-tider och kraftfullare pedaltramp.' },
-      'cardio_long_distance_bike': { emoji: '🚴', message: 'Långpass på cykeln. Bygg din uthållighet – varje km tar dig närmare Jönköping.' },
-      'cardio_long_distance_run': { emoji: '🏃', message: 'Långpass löpning. Håll Zone 2, bygg basen. De snabba tiderna kommer som resultat.' },
-      'cardio_vo2max_bike': { emoji: '⚡', message: 'VO2max cykling idag. Pusha i intervallerna – det här är passet som höjer taket.' },
-      'cardio_vo2max_run': { emoji: '🫁', message: 'VO2max löpning. Intervallerna gör ont men de höjer din syreupptagning direkt.' },
-      'swim_long_swim_swim': { emoji: '🏊', message: 'Långsim. Fokus på jämn teknik och andning. Vattentiden bygger din simform.' },
-      'swim_technique_intervals_swim': { emoji: '🏊', message: 'Teknik + intervaller i vattnet. Effektiv simteknik sparar energi till cykeln.' },
-      'rest__': { emoji: '😴', message: 'Vilodag. Kroppen bygger sig starkare nu. Ät bra, sov gott, och ladda batterierna.' },
+    const trainingMsgs: Record<string, { emoji: string; messageKey: string }> = {
+      'strength_upper_': { emoji: '💪', messageKey: 'coaching.strengthUpper' },
+      'strength_lower_': { emoji: '🦵', messageKey: 'coaching.strengthLower' },
+      cardio_long_distance_bike: { emoji: '🚴', messageKey: 'coaching.longBike' },
+      cardio_long_distance_run: { emoji: '🏃', messageKey: 'coaching.longRun' },
+      cardio_vo2max_bike: { emoji: '⚡', messageKey: 'coaching.vo2Bike' },
+      cardio_vo2max_run: { emoji: '🫁', messageKey: 'coaching.vo2Run' },
+      swim_long_swim_swim: { emoji: '🏊', messageKey: 'coaching.longSwim' },
+      swim_technique_intervals_swim: { emoji: '🏊', messageKey: 'coaching.swimTech' },
+      rest__: { emoji: '😴', messageKey: 'coaching.restDay' },
     };
-
-    // Try exact match first, then partial
-    const exact = msgs[key] || msgs[`${today.planned_type}_${today.planned_subtype}_`];
-    if (exact) return exact;
+    const hit = trainingMsgs[key] || trainingMsgs[`${today.planned_type}_${today.planned_subtype}_`];
+    if (hit) return { emoji: hit.emoji, messageKey: hit.messageKey };
   }
 
-  return { emoji: '🏔️', message: 'Varje dag är ett steg närmare målet. Fortsätt kämpa!' };
+  return { emoji: '🏔️', messageKey: 'coaching.default' };
 }

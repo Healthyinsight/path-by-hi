@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Moon, Dumbbell, Utensils } from 'lucide-react';
 import type { KnowledgeRule } from '@/hooks/useInsights';
@@ -15,6 +16,7 @@ const categoryIcons: Record<string, React.ElementType> = {
 };
 
 export function InsightCard({ rule, index = 0 }: { rule: KnowledgeRule; index?: number }) {
+  const { t } = useTranslation();
   const s = severityStyles[rule.severity] || severityStyles.info;
   const Icon = categoryIcons[rule.category] || Dumbbell;
 
@@ -60,7 +62,7 @@ export function InsightCard({ rule, index = 0 }: { rule: KnowledgeRule; index?: 
       {/* Source */}
       {rule.source_name && (
         <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '11px', color: '#8E9BA3' }}>
-          📚 Baserat på:{' '}
+          📚 {t('insight.basedOn')}{' '}
           {rule.source_url ? (
             <a href={rule.source_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
               {rule.source_name}

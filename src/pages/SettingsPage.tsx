@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -12,12 +13,15 @@ import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LogOut, Watch, Check, Loader2, Mail, Target, RefreshCw } from 'lucide-react';
+import { LogOut, Watch, Check, Loader2, Mail, Target, RefreshCw, Languages } from 'lucide-react';
 import { toast } from 'sonner';
+import i18n from '@/i18n/config';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const PHASES = ['base', 'build', 'peak', 'taper'];
 
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { profile: userProfile, refetch: refetchProfile } = useProfile();
@@ -114,7 +118,7 @@ export default function SettingsPage() {
         : '🏁';
 
     const goalPayload = {
-      goal_name: goalName || 'Mitt mål',
+      goal_name: goalName || t('common.defaultGoalName'),
       goal_date: goalDate,
       goal_emoji: goalEmoji || '🏁',
     };
@@ -154,31 +158,43 @@ export default function SettingsPage() {
       const { error } = await upsertProfile(uid, { onboarding_completed: false });
       if (error) {
         console.error('retakeQuiz failed:', error);
-        toast.error('Kunde inte återställa quiz. Försök igen.');
+        toast.error(t('settings.toastQuizResetFail'));
         return;
       }
       navigate('/onboarding', { replace: true });
     } catch (e) {
       console.error('retakeQuiz failed:', e);
-      toast.error('Kunde inte återställa quiz. Försök igen.');
+      toast.error(t('settings.toastQuizResetFail'));
     }
-  };
-
-  const archLabels: Record<string, string> = {
-    triathlon: 'Triathlon', running: 'Löpning', strength: 'Styrka',
-    weight_loss: 'Viktnedgång', wellness: 'Hälsa', custom: 'Eget mål',
   };
 
   return (
     <div className="app-container pt-6">
-      <h1 className="mb-6 text-xl tracking-tight">Inställningar</h1>
+      <h1 className="mb-6 text-xl tracking-tight">{t('settings.title')}</h1>
 
       <div className="space-y-6">
+        <div className="card-athletic space-y-3">
+          <div className="flex items-center gap-2">
+            <Languages className="h-4 w-4 text-muted-foreground" />
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('settings.language')}</p>
+          </div>
+          <p className="text-xs text-muted-foreground">{t('settings.languageHint')}</p>
+          <Select value={i18n.language.startsWith('en') ? 'en' : 'sv'} onValueChange={(v) => void i18n.changeLanguage(v)}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sv">{t('settings.langSv')}</SelectItem>
+              <SelectItem value="en">{t('settings.langEn')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="card-athletic">
           <div className="flex items-center gap-3">
             <Mail className="h-5 w-5 text-primary" />
             <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Inloggad som</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('settings.loggedInAs')}</p>
               <p className="text-sm font-medium">{user?.email}</p>
             </div>
           </div>
@@ -186,25 +202,25 @@ export default function SettingsPage() {
 
         {userProfile && (
           <div className="card-athletic space-y-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Min profil</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('settings.myProfile')}</p>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Namn</span><span className="font-medium">{userProfile.display_name || '–'}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Typ</span><span className="font-medium">{archLabels[userProfile.archetype] || userProfile.archetype}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Mål</span><span className="font-medium">{userProfile.goal_name || '–'}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Nivå</span><span className="font-medium capitalize">{userProfile.level || '–'}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Träningsdagar</span><span className="font-medium">{userProfile.training_days_per_week}/vecka</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('settings.name')}</span><span className="font-medium">{userProfile.display_name || '–'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('settings.type')}</span><span className="font-medium">{userProfile.archetype ? t(`settings.archetypes.${userProfile.archetype}` as 'settings.archetypes.triathlon') : userProfile.archetype}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('settings.goal')}</span><span className="font-medium">{userProfile.goal_name || '–'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('settings.level')}</span><span className="font-medium capitalize">{userProfile.level || '–'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('settings.trainingDaysPerWeek')}</span><span className="font-medium">{userProfile.training_days_per_week}{t('settings.perWeek')}</span></div>
             </div>
             <Button variant="outline" size="sm" className="w-full gap-2" onClick={retakeQuiz}>
-              <RefreshCw className="h-3.5 w-3.5" /> Kör quizen igen
+              <RefreshCw className="h-3.5 w-3.5" /> {t('settings.retakeQuiz')}
             </Button>
           </div>
         )}
 
         <div className="card-athletic space-y-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Kropp & hälsa</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('settings.bodyHealth')}</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Vikt (kg)</Label>
+              <Label className="text-xs">{t('settings.weightKg')}</Label>
               <Input
                 inputMode="decimal"
                 type="number"
@@ -213,7 +229,7 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Längd (cm)</Label>
+              <Label className="text-xs">{t('settings.heightCm')}</Label>
               <Input
                 inputMode="numeric"
                 type="number"
@@ -222,7 +238,7 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Målvikt (kg)</Label>
+              <Label className="text-xs">{t('settings.targetWeightKg')}</Label>
               <Input
                 inputMode="decimal"
                 type="number"
@@ -231,7 +247,7 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Kroppsfett (%)</Label>
+              <Label className="text-xs">{t('settings.bodyFatPct')}</Label>
               <Input
                 inputMode="decimal"
                 type="number"
@@ -247,21 +263,21 @@ export default function SettingsPage() {
             disabled={savingBody}
           >
             {savingBody && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Spara
+            {t('settings.saveBody')}
           </Button>
         </div>
 
         <div className="card-athletic space-y-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Träningsdata</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('settings.trainingData')}</p>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="text-xs">Namn</Label>
+              <Label className="text-xs">{t('settings.name')}</Label>
               <Input value={trainingUser.name || ''} onChange={(e) => updateTraining('name', e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Vikt (kg)</Label><Input type="number" value={trainingUser.current_weight ?? ''} onChange={(e) => updateTraining('current_weight', e.target.value)} /></div>
-              <div className="space-y-1"><Label className="text-xs">Längd (cm)</Label><Input type="number" value={trainingUser.height_cm ?? ''} onChange={(e) => updateTraining('height_cm', e.target.value)} /></div>
-              <div className="space-y-1"><Label className="text-xs">Kroppsfett %</Label><Input type="number" value={trainingUser.body_fat_pct ?? ''} onChange={(e) => updateTraining('body_fat_pct', e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">{t('settings.weightKg')}</Label><Input type="number" value={trainingUser.current_weight ?? ''} onChange={(e) => updateTraining('current_weight', e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">{t('settings.heightCm')}</Label><Input type="number" value={trainingUser.height_cm ?? ''} onChange={(e) => updateTraining('height_cm', e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">{t('settings.bodyFatPct')}</Label><Input type="number" value={trainingUser.body_fat_pct ?? ''} onChange={(e) => updateTraining('body_fat_pct', e.target.value)} /></div>
               <div className="space-y-1"><Label className="text-xs">FTP (watt)</Label><Input type="number" value={trainingUser.ftp_watts ?? ''} onChange={(e) => updateTraining('ftp_watts', e.target.value)} /></div>
               <div className="space-y-1"><Label className="text-xs">Löptempo (min/km)</Label><Input value={trainingUser.run_threshold_pace || ''} onChange={(e) => updateTraining('run_threshold_pace', e.target.value)} /></div>
               <div className="space-y-1"><Label className="text-xs">VO2max</Label><Input type="number" value={trainingUser.vo2max_estimate ?? ''} onChange={(e) => updateTraining('vo2max_estimate', e.target.value)} /></div>
@@ -270,7 +286,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="card-athletic space-y-3">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Träningsfas</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('settings.trainingPhase')}</p>
           <div className="flex gap-2">
             {PHASES.map((phase) => (
               <button
@@ -291,18 +307,18 @@ export default function SettingsPage() {
         <div className="card-athletic space-y-3">
           <div className="flex items-center gap-2">
             <Watch className="h-4 w-4 text-muted-foreground" />
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Garmin Connect</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('settings.garminConnect')}</p>
           </div>
           {trainingUser.garmin_user_id ? (
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-rest" />
-              <span className="text-sm text-rest">Ansluten</span>
+              <span className="text-sm text-rest">{t('settings.connected')}</span>
               <span className="text-xs text-muted-foreground">({trainingUser.garmin_user_id})</span>
             </div>
           ) : (
             <div>
-              <Button disabled variant="outline" className="touch-target w-full opacity-50">Anslut Garmin</Button>
-              <p className="mt-2 text-xs text-muted-foreground">Garmin-integration kommer snart</p>
+              <Button disabled variant="outline" className="touch-target w-full opacity-50">{t('settings.connectGarmin')}</Button>
+              <p className="mt-2 text-xs text-muted-foreground">{t('settings.garminComingSoon')}</p>
             </div>
           )}
         </div>
@@ -310,20 +326,20 @@ export default function SettingsPage() {
         <div className="card-athletic space-y-3">
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-primary" />
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Mitt mål</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('settings.myGoal')}</p>
           </div>
           <div className="space-y-2">
             <div className="space-y-1">
-              <Label className="text-xs">Målnamn</Label>
-              <Input value={goal.goal_name} onChange={(e) => setGoal((g) => ({ ...g, goal_name: e.target.value }))} placeholder="t.ex. Ironman 70.3" />
+              <Label className="text-xs">{t('settings.goalName')}</Label>
+              <Input value={goal.goal_name} onChange={(e) => setGoal((g) => ({ ...g, goal_name: e.target.value }))} placeholder={t('settings.goalPlaceholder')} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs">Måldatum</Label>
+                <Label className="text-xs">{t('settings.goalDate')}</Label>
                 <Input type="date" value={goal.goal_date} onChange={(e) => setGoal((g) => ({ ...g, goal_date: e.target.value }))} />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Emoji</Label>
+                <Label className="text-xs">{t('settings.emoji')}</Label>
                 <Input value={goal.goal_emoji} onChange={(e) => setGoal((g) => ({ ...g, goal_emoji: e.target.value }))} placeholder="🏁" />
               </div>
             </div>
@@ -332,11 +348,11 @@ export default function SettingsPage() {
 
         <Button onClick={save} className="w-full touch-target" disabled={saving}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Spara inställningar
+          {t('settings.saveSettings')}
         </Button>
 
         <Button onClick={signOut} variant="outline" className="w-full touch-target text-destructive hover:text-destructive">
-          <LogOut className="mr-2 h-4 w-4" /> Logga ut
+          <LogOut className="mr-2 h-4 w-4" /> {t('settings.signOut')}
         </Button>
       </div>
 

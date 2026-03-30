@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { BottomNav } from '@/components/BottomNav';
@@ -6,6 +7,7 @@ import { Scale, Percent, Heart, Activity } from 'lucide-react';
 import type { BodyMetric } from '@/types/database';
 
 export default function Progress() {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [metrics, setMetrics] = useState<BodyMetric | null>(null);
 
@@ -24,17 +26,17 @@ export default function Progress() {
   }, [user]);
 
   const stats = [
-    { label: 'Vikt', value: metrics?.weight, unit: 'kg', icon: Scale },
-    { label: 'Kroppsfett', value: metrics?.body_fat_pct, unit: '%', icon: Percent },
-    { label: 'VO2max', value: metrics?.vo2max_run, unit: '', icon: Activity },
-    { label: 'Vilopuls', value: metrics?.resting_hr, unit: 'bpm', icon: Heart },
+    { label: t('progress.weight'), value: metrics?.weight, unit: 'kg', icon: Scale },
+    { label: t('progress.bodyFat'), value: metrics?.body_fat_pct, unit: '%', icon: Percent },
+    { label: t('progress.vo2'), value: metrics?.vo2max_run, unit: '', icon: Activity },
+    { label: t('progress.restingHr'), value: metrics?.resting_hr, unit: 'bpm', icon: Heart },
   ];
 
   return (
     <div className="app-container pt-6">
-      <h1 className="mb-2 text-xl tracking-tight">Progress</h1>
+      <h1 className="mb-2 text-xl tracking-tight">{t('progress.title')}</h1>
       <div className="tip-callout mb-6">
-        <p className="text-sm text-primary">Trendgrafer och analytics kommer i nästa fas</p>
+        <p className="text-sm text-primary">{t('progress.comingSoon')}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -51,7 +53,8 @@ export default function Progress() {
 
       {metrics && (
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Senast uppdaterad: {new Date(metrics.date).toLocaleDateString('sv-SE')}
+          {t('progress.lastUpdated')}{' '}
+          {new Date(metrics.date).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'sv-SE')}
         </p>
       )}
 

@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { BottomNav } from '@/components/BottomNav';
@@ -25,17 +26,6 @@ const typeConfig: Record<string, { color: string; bgClass: string }> = {
   rest: { color: 'text-rest', bgClass: 'bg-rest/10 border-rest/20' },
 };
 
-const sportLabels: Record<string, string> = {
-  bike: 'Cykling', run: 'Löpning', swim: 'Simning', strength: 'Styrka',
-};
-
-const subtypeLabels: Record<string, string> = {
-  long_distance: 'Långdistans', vo2max: 'VO2max', upper: 'Överkropp', lower: 'Underkropp',
-  long_swim: 'Långsim', technique_intervals: 'Teknik & Intervaller',
-};
-
-const DAY_LABELS = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön'];
-
 function getWeekDates(offset: number): Date[] {
   const today = new Date();
   const day = today.getDay();
@@ -57,6 +47,7 @@ function fmtShortDate(d: Date): string {
 }
 
 export default function Schedule() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const [schedule, setSchedule] = useState<any[]>([]);
@@ -65,6 +56,18 @@ export default function Schedule() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const weekDates = getWeekDates(weekOffset);
+
+  const weekdayLabels = useMemo(
+    () => [t('weekdays.mon'), t('weekdays.tue'), t('weekdays.wed'), t('weekdays.thu'), t('weekdays.fri'), t('weekdays.sat'), t('weekdays.sun')],
+    [t],
+  );
+  const trSport = (s?: string | null) =>
+    s && ['bike', 'run', 'swim', 'strength'].includes(s) ? t(`sports.${s}`) : s || '';
+  const trSubtype = (s?: string | null) =>
+    s &&
+    ['long_distance', 'vo2max', 'upper', 'lower', 'long_swim', 'technique_intervals'].includes(s)
+      ? t(`subtypes.${s}`)
+      : s || '';
 
   const loadSchedule = useCallback(async () => {
     if (!user) return;
@@ -99,16 +102,16 @@ export default function Schedule() {
     }
     const rows = allEntries.map((e) => ({ ...e, user_id: user.id }));
     const { error } = await supabase.from('training_schedule').insert(rows);
-    if (error) { toast.error('Kunde inte generera schema'); }
-    else { toast.success('4-veckors schema genererat! 🎉'); await loadSchedule(); }
+    if (error) { toast.error(t('schedule.toastGenerateFail')); }
+    else { toast.success(t('schedule.seedSuccess')); await loadSchedule(); }
     setGenerating(false);
-  }, [user, profile, loadSchedule]);
+  }, [user, profile, loadSchedule, t]);
 
   const regenerateSchedule = useCallback(async () => {
     if (!user) return;
     if (!profile) {
       console.warn('Profile not loaded – skipping schedule regenerate');
-      toast.error('Profil saknas. Kör klart quizen först.');
+      toast.error(t('schedule.noProfile'));
       return;
     }
     setGenerating(true);
@@ -129,10 +132,10 @@ export default function Schedule() {
     }
     const rows = allEntries.map((e) => ({ ...e, user_id: user.id }));
     const { error } = await supabase.from('training_schedule').insert(rows);
-    if (error) { toast.error('Kunde inte generera schema'); }
-    else { toast.success('Nytt 4-veckors schema genererat! 🎉'); await loadSchedule(); }
+    if (error) { toast.error(t('schedule.toastGenerateFail')); }
+    else { toast.success(t('schedule.toastRegenerateOk')); await loadSchedule(); }
     setGenerating(false);
-  }, [user, profile, loadSchedule]);
+  }, [user, profile, loadSchedule, t]);
 
   useEffect(() => { loadSchedule(); }, [loadSchedule]);
 
@@ -149,9 +152,9 @@ export default function Schedule() {
   const markCompleted = async () => {
     if (!selectedWorkout) return;
     const { error } = await supabase.from('training_schedule').update({ completed: true }).eq('id', selectedWorkout.id);
-    if (error) { toast.error('Kunde inte uppdatera'); }
+    if (error) { toast.error(t('schedule.toastUpdateFail')); }
     else {
-      toast.success('Pass genomfört! 💪');
+      toast.success(t('schedule.toastCompletedOk'));
       setSchedule((prev) => prev.map((s) => (s.id === selectedWorkout.id ? { ...s, completed: true } : s)));
     }
   };
@@ -161,10 +164,10 @@ export default function Schedule() {
   return (
     <div className="app-container pt-6">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl tracking-tight">Träningsschema</h1>
+        <h1 className="text-xl tracking-tight">{t('schedule.title')}</h1>
         <Button variant="outline" size="sm" onClick={regenerateSchedule} disabled={generating} className="gap-1.5">
           <RefreshCw className={`h-3.5 w-3.5 ${generating ? 'animate-spin' : ''}`} />
-          Generera nytt
+          {t('schedule.regenerate')}
         </Button>
       </div>
 
@@ -202,7 +205,7 @@ export default function Schedule() {
                   : 'border-border bg-card'
               }`}
             >
-              <span className="text-[10px] text-muted-foreground">{DAY_LABELS[i]}</span>
+              <span className="text-[10px] text-muted-foreground">{weekdayLabels[i]}</span>
               <span className={`text-sm font-bold ${isToday ? 'text-primary' : 'text-foreground'}`}>
                 {date.getDate()}
               </span>
@@ -219,7 +222,7 @@ export default function Schedule() {
               )}
               {workout && (
                 <span className="max-w-full truncate text-[8px] text-muted-foreground">
-                  {sportLabels[workout.planned_sport] || workout.planned_type}
+                  {trSport(workout.planned_sport) || workout.planned_type}
                 </span>
               )}
             </button>
@@ -240,15 +243,15 @@ export default function Schedule() {
                 </div>
                 <div>
                   <p className="text-lg font-bold">
-                    {sportLabels[selectedWorkout.planned_sport] || selectedWorkout.planned_type}{' '}
-                    – {subtypeLabels[selectedWorkout.planned_subtype] || selectedWorkout.planned_subtype}
+                    {trSport(selectedWorkout.planned_sport) || selectedWorkout.planned_type}{' '}
+                    – {trSubtype(selectedWorkout.planned_subtype) || selectedWorkout.planned_subtype}
                   </p>
                   <p className="text-xs text-muted-foreground capitalize">{selectedWorkout.planned_type}</p>
                 </div>
               </div>
               {selectedWorkout.completed && (
                 <span className="flex items-center gap-1 rounded-full bg-rest/10 px-3 py-1 text-xs font-medium text-rest">
-                  <Check className="h-3 w-3" /> Genomfört
+                  <Check className="h-3 w-3" /> {t('schedule.completed')}
                 </span>
               )}
             </div>
@@ -273,21 +276,21 @@ export default function Schedule() {
 
             {selectedWorkout.notes && (
               <div className="rounded-xl bg-muted/30 p-3">
-                <p className="text-xs uppercase text-muted-foreground">Anteckningar</p>
+                <p className="text-xs uppercase text-muted-foreground">{t('schedule.notes')}</p>
                 <p className="mt-1 text-sm">{selectedWorkout.notes}</p>
               </div>
             )}
 
             {!selectedWorkout.completed && (
               <Button onClick={markCompleted} className="w-full touch-target">
-                <Check className="mr-2 h-4 w-4" /> Markera som genomfört
+                <Check className="mr-2 h-4 w-4" /> {t('schedule.markDone')}
               </Button>
             )}
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 py-8">
             <Coffee className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Inget pass planerat</p>
+            <p className="text-sm text-muted-foreground">{t('schedule.noWorkout')}</p>
           </div>
         )}
       </div>
