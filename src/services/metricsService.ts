@@ -1,3 +1,46 @@
+import { supabase } from '@/integrations/supabase/client'
+import { toFiniteNumber } from './utils'
+
+export interface BodyMetric {
+  id: string
+  user_id: string
+  recorded_at: string
+  weight?: number | null
+  body_fat_pct?: number | null
+  resting_hr?: number | null
+  notes?: string | null
+}
+
+export async function getMetrics(userId: string, limit = 30) {
+  const { data, error } = await supabase
+    .from('body_metrics')
+    .select('*')
+    .eq('user_id', userId)
+    .order('recorded_at', { ascending: false })
+    .limit(limit)
+
+  if (error) return { data: null, error }
+
+  return {
+    data: data.map(m => ({
+      ...m,
+      weight: toFiniteNumber(m.weight),
+      body_fat_pct: toFiniteNumber(m.body_fat_pct),
+      resting_hr: toFiniteNumber(m.resting_hr),
+    })) as BodyMetric[],
+    error: null,
+  }
+}
+
+export async function insertMetric(userId: string, metric: Partial<BodyMetric>) {
+  const { data, error } = await supabase
+    .from('body_metrics')
+    .insert({ ...metric, user_id: userId })
+    .select()
+    .single()
+
+  return { data, error }
+}
 import type { PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';

@@ -1,3 +1,9 @@
+export * from './utils'
+export * from './profileService'
+export * from './goalsService'
+export * from './usersService'
+export * from './scheduleService'
+export * from './metricsService'
 export { toFiniteNumber, getCurrentUserId } from '@/services/utils';
 export { getProfile, upsertProfile, type UserProfile, type UserProfileUpsert } from '@/services/profileService';
 export { getGoals, upsertGoals, type UserGoals, type UpsertGoalsInput } from '@/services/goalsService';
