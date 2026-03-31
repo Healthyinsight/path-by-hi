@@ -1,7 +1,7 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -13,7 +13,6 @@ import { RaceCountdownArc } from '@/components/RaceCountdownArc';
 import { InsightCard } from '@/components/InsightCard';
 import { useInsights } from '@/hooks/useInsights';
 import { getTodayRecovery, getStreakMilestone } from '@/data/mockRecoveryData';
-import { buildFallbackTodayInsight } from '@/data/fallbackInsight';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -27,7 +26,7 @@ import { Slider } from '@/components/ui/slider';
 import { Check, Calendar, ChefHat, ClipboardList, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { getNutritionTargets } from '@/lib/nutritionEngine';
-import { getLatestMetrics } from '@/services/metricsService';
+import { addMetrics, getLatestMetrics, getMetricsHistory } from '@/services/metricsService';
 
 /* ---- helpers ---- */
 const fmtDate = (d: Date) => d.toISOString().split('T')[0];
@@ -110,6 +109,7 @@ export default function TodayView() {
     body_battery: number | null;
     garmin_measured_at: string | null;
     created_at: string;
+    date: string | null;
   } | null>(null);
   const [loadingGarminBattery, setLoadingGarminBattery] = useState(true);
 
@@ -118,12 +118,12 @@ export default function TodayView() {
   const [moodDialogOpen, setMoodDialogOpen] = useState(false);
   const [moodSliderValue, setMoodSliderValue] = useState([3]);
   const [savedMoodToday, setSavedMoodToday] = useState<number | null>(null);
+  const [showRecoveryMoodCard, setShowRecoveryMoodCard] = useState(false);
+  const [showInlineMoodChoices, setShowInlineMoodChoices] = useState(false);
 
   const insightsLimited = insights.slice(0, 2);
   const hasRecoverySignal =
     !loadingGarminBattery && latestMetrics?.body_battery != null;
-
-  const fallbackInsight = useMemo(() => buildFallbackTodayInsight(t), [t, i18n.language]);
 
   const trSport = (s?: string | null) =>
     s && ['bike', 'run', 'swim', 'strength'].includes(s) ? t(`sports.${s}`) : s || '';
@@ -161,6 +161,7 @@ export default function TodayView() {
           body_battery: data.body_battery,
           garmin_measured_at: data.garmin_measured_at,
           created_at: data.created_at,
+          date: (data as any).date ?? null,
         });
       }
       setLoadingGarminBattery(false);
@@ -189,6 +190,37 @@ export default function TodayView() {
     }
   }, [user, today]);
 
+  useEffect(() => {
+    if (!user) {
+      setShowRecoveryMoodCard(false);
+      return;
+    }
+    void (async () => {
+      try {
+        const todayDate = new Date(today);
+        const start = new Date(todayDate);
+        start.setDate(todayDate.getDate() - 7);
+        const startStr = fmtDate(start);
+        const { data } = await getMetricsHistory(user.id, startStr, today);
+        const withMood = (data ?? []).filter(
+          (m) => typeof m.mood_score === 'number' && m.mood_score !== null,
+        );
+        if (withMood.length === 0) {
+          setShowRecoveryMoodCard(true);
+          return;
+        }
+        const last = withMood[withMood.length - 1]!;
+        const lastDate = new Date(last.date as string);
+        const diffDays = Math.floor(
+          (todayDate.getTime() - lastDate.getTime()) / 86400000,
+        );
+        setShowRecoveryMoodCard(diffDays > 3);
+      } catch {
+        setShowRecoveryMoodCard(true);
+      }
+    })();
+  }, [user, today]);
+
   const openMoodDialog = () => {
     setMoodSliderValue([savedMoodToday ?? 3]);
     setMoodDialogOpen(true);
@@ -208,6 +240,29 @@ export default function TodayView() {
       toast.error(t('today.toastMoodFail'));
     }
     setMoodDialogOpen(false);
+  };
+
+  const handleQuickMoodSelect = async (moodValue: number) => {
+    if (!user) {
+      toast.error(t('today.toastMoodFail'));
+      return;
+    }
+
+    const invertedMood = 6 - moodValue;
+
+    const { error } = await addMetrics(user.id, {
+      date: today,
+      mood_score: invertedMood,
+    } as any);
+
+    if (error) {
+      toast.error(t('today.toastMoodFail'));
+      return;
+    }
+
+    toast.success('Tack! Noterat.');
+    setShowRecoveryMoodCard(false);
+    setShowInlineMoodChoices(false);
   };
 
   const markCompleted = async () => {
@@ -302,6 +357,32 @@ export default function TodayView() {
     month: 'long',
   });
 
+  const trainingPhase = profile?.training_phase as
+    | 'base'
+    | 'build'
+    | 'peak'
+    | 'taper'
+    | undefined;
+
+  const fallbackPhaseInsightBody = useMemo(() => {
+    switch (trainingPhase) {
+      case 'base':
+        return 'Bygg din aeroba bas. Håll 80% av träningen i Zone 2 den här perioden.';
+      case 'build':
+        return 'Nu ökar belastningen. Säkerställ att du sover 7–9h och äter tillräckligt protein.';
+      case 'peak':
+        return 'Peak-fasen kräver precision. Lyssna noga på kroppen och undvik extra stress.';
+      case 'taper':
+        return 'Tapern är en del av träningen. Motstå frestelsen att träna mer — vila är strategi.';
+      default:
+        return 'Konsistens slår intensitet. Ett pass är bättre än inget pass.';
+    }
+  }, [trainingPhase]);
+
+  const isRestDay = !!workout && workout.planned_type === 'rest';
+  const hasWorkoutToday = !!workout && !isRestDay;
+  const workoutSectionRef = useRef<HTMLDivElement | null>(null);
+
   return (
     <div className="bg-today">
       <div className="app-container pt-4">
@@ -388,18 +469,6 @@ export default function TodayView() {
               >
                 {t('today.noRecoveryBody')}
               </p>
-              {savedMoodToday != null && (
-                <p
-                  style={{
-                    fontFamily: "'Merriweather Sans', sans-serif",
-                    fontSize: '13px',
-                    color: '#5095AC',
-                    fontWeight: 600,
-                  }}
-                >
-                  {t('today.moodSaved', { value: savedMoodToday })}
-                </p>
-              )}
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button
                   className="touch-target w-full sm:flex-1"
@@ -409,18 +478,107 @@ export default function TodayView() {
                   <Settings className="mr-2 h-4 w-4" />
                   {t('today.toSettings')}
                 </Button>
-                <Button
-                  variant="outline"
-                  className="touch-target w-full sm:flex-1"
-                  style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
-                  onClick={openMoodDialog}
-                >
-                  {t('today.logMood')}
-                </Button>
               </div>
             </div>
           )}
         </motion.section>
+
+        {/* Recovery mood inline card when no recent body_metrics */}
+        <AnimatePresence>
+          {showRecoveryMoodCard && (
+            <motion.section
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="mb-4"
+            >
+              <div className="rounded-xl bg-white p-4 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span style={{ fontSize: '22px' }}>💤</span>
+                  <h3
+                    style={{
+                      fontFamily: "'Merriweather', serif",
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      color: '#1A2B32',
+                    }}
+                  >
+                    Hur mår kroppen?
+                  </h3>
+                </div>
+                <p
+                  style={{
+                    fontFamily: "'Merriweather Sans', sans-serif",
+                    fontSize: '14px',
+                    color: '#6B7B84',
+                    marginTop: '6px',
+                  }}
+                >
+                  Logga hur du känner dig så kan appen ge bättre råd.
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Button
+                    className="touch-target"
+                    style={{
+                      borderRadius: '9999px',
+                      backgroundColor: '#5095AC',
+                      fontFamily: "'Merriweather Sans', sans-serif",
+                      fontWeight: 600,
+                    }}
+                    onClick={() => setShowInlineMoodChoices((v) => !v)}
+                  >
+                    Logga hur du mår
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/settings')}
+                    style={{
+                      fontFamily: "'Merriweather Sans', sans-serif",
+                      fontSize: '13px',
+                      color: '#5095AC',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Till inställningar
+                  </button>
+                </div>
+                <AnimatePresence>
+                  {showInlineMoodChoices && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5"
+                    >
+                      {[
+                        { value: 1, label: '😫 Utmattad' },
+                        { value: 2, label: '😕 Trött' },
+                        { value: 3, label: '😐 Okej' },
+                        { value: 4, label: '😊 Bra' },
+                        { value: 5, label: '🚀 På topp' },
+                      ].map((m) => (
+                        <button
+                          key={m.value}
+                          type="button"
+                          onClick={() => void handleQuickMoodSelect(m.value)}
+                          className="h-10 rounded-full border text-sm"
+                          style={{
+                            borderColor: '#E0E7EB',
+                            fontFamily: "'Merriweather Sans', sans-serif",
+                            color: '#1A2B32',
+                            backgroundColor: '#FFFFFF',
+                          }}
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
 
         {/* 1. Insights */}
         <motion.section variants={cardVariant(5)} initial="hidden" animate="visible" className="mb-4 space-y-3">
@@ -433,8 +591,13 @@ export default function TodayView() {
               <div className="card-glass animate-pulse h-20" />
             </>
           ) : insights.length === 0 ? (
-            <div className="space-y-3">
-              <div className="card-glass space-y-3 py-4">
+            <AnimatePresence>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="rounded-xl bg-white p-4 shadow-sm space-y-3"
+              >
                 <p
                   style={{
                     fontFamily: "'Merriweather', serif",
@@ -443,28 +606,54 @@ export default function TodayView() {
                     color: '#1A2B32',
                   }}
                 >
-                  {t('today.insightsEmptyTitle')}
+                  Dagens rekommendation
                 </p>
                 <p
                   style={{
                     fontFamily: "'Merriweather Sans', sans-serif",
                     fontSize: '14px',
-                    color: '#6B7B84',
+                    color: '#3D4F58',
                     lineHeight: 1.5,
                   }}
                 >
-                  {t('today.insightsEmptyBody')}
+                  {fallbackPhaseInsightBody}
                 </p>
-                <Button
-                  className="touch-target w-full sm:w-auto"
-                  style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
-                  onClick={() => navigate(!workout ? '/schedule' : '/settings')}
-                >
-                  {!workout ? t('today.openSchedule') : t('today.toSettingsShort')}
-                </Button>
-              </div>
-              <InsightCard rule={fallbackInsight} index={0} />
-            </div>
+                <div className="flex flex-wrap gap-2">
+                  {hasWorkoutToday ? (
+                    <Button
+                      className="touch-target"
+                      style={{
+                        borderRadius: '10px',
+                        fontFamily: "'Merriweather Sans', sans-serif",
+                        fontWeight: 600,
+                        backgroundColor: '#5095AC',
+                      }}
+                      onClick={() => {
+                        workoutSectionRef.current?.scrollIntoView({
+                          behavior: 'smooth',
+                          block: 'start',
+                        });
+                      }}
+                    >
+                      Se dagens pass
+                    </Button>
+                  ) : (
+                    <Button
+                      className="touch-target"
+                      style={{
+                        borderRadius: '10px',
+                        fontFamily: "'Merriweather Sans', sans-serif",
+                        fontWeight: 600,
+                        backgroundColor: '#5095AC',
+                      }}
+                      onClick={() => navigate('/schedule')}
+                    >
+                      Justera schemat
+                    </Button>
+                  )}
+                </div>
+              </motion.div>
+            </AnimatePresence>
           ) : (
             <>
               {insightsLimited.map((rule, i) => (
@@ -494,10 +683,59 @@ export default function TodayView() {
         </motion.section>
 
         {/* 4. Workout Card */}
-        <motion.section variants={cardVariant(3)} initial="hidden" animate="visible" className="mb-4">
+        <motion.section
+          variants={cardVariant(3)}
+          initial="hidden"
+          animate="visible"
+          className="mb-4"
+          ref={workoutSectionRef}
+        >
           {loadingWorkout ? (
             <div className="card-glass animate-pulse h-28" />
           ) : workout ? (
+            isRestDay ? (
+              <div className="card-glass space-y-3 py-6">
+                <div className="flex items-center gap-3">
+                  <span style={{ fontSize: '28px' }}>🛌</span>
+                  <div>
+                    <p
+                      style={{
+                        fontFamily: "'Merriweather', serif",
+                        fontSize: '16px',
+                        fontWeight: 700,
+                        color: '#1A2B32',
+                      }}
+                    >
+                      Vilodag
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: "'Merriweather Sans', sans-serif",
+                        fontSize: '14px',
+                        color: '#6B7B84',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      Din kropp bygger styrka nu. Aktiv återhämtning är också träning.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex">
+                  <Button
+                    size="sm"
+                    className="touch-target w-full sm:w-auto"
+                    style={{
+                      borderRadius: '10px',
+                      fontFamily: "'Merriweather Sans', sans-serif",
+                      fontWeight: 600,
+                    }}
+                    onClick={() => navigate('/schedule')}
+                  >
+                    Se veckans schema
+                  </Button>
+                </div>
+              </div>
+            ) : (
             <div className="card-glass space-y-3" style={{ opacity: workout.completed ? 0.85 : 1 }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -580,36 +818,42 @@ export default function TodayView() {
                 </Button>
               </div>
             </div>
+            )
           ) : (
             <div className="card-glass space-y-3 py-6">
-              <p
-                style={{
-                  fontFamily: "'Merriweather', serif",
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  color: '#1A2B32',
-                }}
-              >
-                {t('today.noWorkoutTitle')}
-              </p>
-              <p
-                style={{
-                  fontFamily: "'Merriweather Sans', sans-serif",
-                  fontSize: '14px',
-                  color: '#6B7B84',
-                  lineHeight: 1.5,
-                }}
-              >
-                {t('today.noWorkoutBody')}
-              </p>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex items-center gap-3">
+                <span style={{ fontSize: '28px' }}>📅</span>
+                <div>
+                  <p
+                    style={{
+                      fontFamily: "'Merriweather', serif",
+                      fontSize: '16px',
+                      fontWeight: 700,
+                      color: '#1A2B32',
+                    }}
+                  >
+                    Ingen träning planerad idag
+                  </p>
+                  <p
+                    style={{
+                      fontFamily: "'Merriweather Sans', sans-serif",
+                      fontSize: '14px',
+                      color: '#6B7B84',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Det kan vara en välförtjänt vilodag — eller så saknas ett schema.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <Button
                   size="sm"
                   onClick={generateNewSchedule}
                   className="touch-target w-full sm:flex-1"
                   style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
                 >
-                  {t('today.generateSchedule')}
+                  Generera nytt schema
                 </Button>
                 <Button
                   variant="outline"
@@ -619,7 +863,7 @@ export default function TodayView() {
                   style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
                 >
                   <Calendar className="mr-2 h-4 w-4" />
-                  {t('today.seeWeek')}
+                  Se hela veckan
                 </Button>
               </div>
             </div>
