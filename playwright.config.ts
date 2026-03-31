@@ -9,7 +9,7 @@ export default defineConfig({
     timeout: 30000,
   },
   use: {
-    baseURL: 'https://tracker.healthyinsight.eu',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080',
     browserName: 'chromium',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
