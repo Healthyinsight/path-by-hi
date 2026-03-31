@@ -69,13 +69,6 @@ function sanitizeUserPayload(data: UserUpdate): Record<string, unknown> {
   return out;
 }
 
-export async function getUser(
-  userId: string,
-): Promise<{ data: User | null; error: PostgrestError | null }> {
-  const { data, error } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
-  return { data, error };
-}
-
 export async function updateUser(
   userId: string,
   data: UserUpdate,

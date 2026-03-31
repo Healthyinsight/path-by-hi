@@ -70,17 +70,6 @@ function resolveGoalDate(
   return defaultGoalDate();
 }
 
-export async function getGoals(
-  userId: string,
-): Promise<{ data: UserGoals | null; error: PostgrestError | null }> {
-  const { data, error } = await supabase
-    .from('user_goals')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle();
-  return { data, error };
-}
-
 export async function upsertGoals(
   userId: string,
   data: UpsertGoalsInput,

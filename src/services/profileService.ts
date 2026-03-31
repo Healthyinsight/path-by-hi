@@ -67,17 +67,6 @@ function sanitizeProfilePayload(data: UserProfileUpsert): Record<string, unknown
   return out;
 }
 
-export async function getProfile(
-  userId: string,
-): Promise<{ data: UserProfile | null; error: PostgrestError | null }> {
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle();
-  return { data: data as UserProfile | null, error };
-}
-
 export async function upsertProfile(
   userId: string,
   data: UserProfileUpsert,

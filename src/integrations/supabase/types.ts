@@ -82,7 +82,6 @@ export type Database = {
           body_fat_pct: number | null
           created_at: string
           date: string
-          garmin_measured_at: string | null
           hrv_rmssd: number | null
           id: string
           resting_hr: number | null
@@ -90,6 +89,8 @@ export type Database = {
           sleep_quality_score: number | null
           source: string | null
           stress_level: number | null
+          mood_score: number | null
+          garmin_measured_at: string | null
           user_id: string
           vo2max_bike: number | null
           vo2max_run: number | null
@@ -100,7 +101,6 @@ export type Database = {
           body_fat_pct?: number | null
           created_at?: string
           date: string
-          garmin_measured_at?: string | null
           hrv_rmssd?: number | null
           id?: string
           resting_hr?: number | null
@@ -108,6 +108,8 @@ export type Database = {
           sleep_quality_score?: number | null
           source?: string | null
           stress_level?: number | null
+          mood_score?: number | null
+          garmin_measured_at?: string | null
           user_id: string
           vo2max_bike?: number | null
           vo2max_run?: number | null
@@ -118,7 +120,6 @@ export type Database = {
           body_fat_pct?: number | null
           created_at?: string
           date?: string
-          garmin_measured_at?: string | null
           hrv_rmssd?: number | null
           id?: string
           resting_hr?: number | null
@@ -126,6 +127,8 @@ export type Database = {
           sleep_quality_score?: number | null
           source?: string | null
           stress_level?: number | null
+          mood_score?: number | null
+          garmin_measured_at?: string | null
           user_id?: string
           vo2max_bike?: number | null
           vo2max_run?: number | null
@@ -171,49 +174,19 @@ export type Database = {
         }
         Relationships: []
       }
-      garmin_webhook_events: {
-        Row: {
-          id: string
-          received_at: string
-          event_type: string
-          payload_json: Json
-          processed_at: string | null
-          error: string | null
-          dedupe_key: string
-        }
-        Insert: {
-          id?: string
-          received_at?: string
-          event_type: string
-          payload_json: Json
-          processed_at?: string | null
-          error?: string | null
-          dedupe_key: string
-        }
-        Update: {
-          id?: string
-          received_at?: string
-          event_type?: string
-          payload_json?: Json
-          processed_at?: string | null
-          error?: string | null
-          dedupe_key?: string
-        }
-        Relationships: []
-      }
       knowledge_rules: {
         Row: {
           action_text: string | null
-          applicable_archetypes: string[]
-          applicable_disciplines: string[]
+          applicable_archetypes: string[] | null
+          applicable_disciplines: string[] | null
           category: string
-          created_at: string
+          created_at: string | null
           id: string
           insight_body: string
           insight_title: string
-          is_active: boolean
-          priority: number
-          severity: string
+          is_active: boolean | null
+          priority: number | null
+          severity: string | null
           source_name: string | null
           source_url: string | null
           trigger_condition: Json
@@ -221,33 +194,33 @@ export type Database = {
         }
         Insert: {
           action_text?: string | null
-          applicable_archetypes?: string[]
-          applicable_disciplines?: string[]
+          applicable_archetypes?: string[] | null
+          applicable_disciplines?: string[] | null
           category: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           insight_body: string
           insight_title: string
-          is_active?: boolean
-          priority?: number
-          severity: string
+          is_active?: boolean | null
+          priority?: number | null
+          severity?: string | null
           source_name?: string | null
           source_url?: string | null
-          trigger_condition?: Json
+          trigger_condition: Json
           trigger_type: string
         }
         Update: {
           action_text?: string | null
-          applicable_archetypes?: string[]
-          applicable_disciplines?: string[]
+          applicable_archetypes?: string[] | null
+          applicable_disciplines?: string[] | null
           category?: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           insight_body?: string
           insight_title?: string
-          is_active?: boolean
-          priority?: number
-          severity?: string
+          is_active?: boolean | null
+          priority?: number | null
+          severity?: string | null
           source_name?: string | null
           source_url?: string | null
           trigger_condition?: Json
@@ -326,6 +299,8 @@ export type Database = {
           planned_sport: string | null
           planned_subtype: string | null
           planned_type: string
+          source: string | null
+          week_start_date: string | null
           user_id: string
         }
         Insert: {
@@ -339,6 +314,8 @@ export type Database = {
           planned_sport?: string | null
           planned_subtype?: string | null
           planned_type: string
+          source?: string | null
+          week_start_date?: string | null
           user_id: string
         }
         Update: {
@@ -352,6 +329,8 @@ export type Database = {
           planned_sport?: string | null
           planned_subtype?: string | null
           planned_type?: string
+          source?: string | null
+          week_start_date?: string | null
           user_id?: string
         }
         Relationships: [
@@ -375,28 +354,31 @@ export type Database = {
         Row: {
           created_at: string | null
           disciplines: string[] | null
-          goal_date: string
+          goal_date: string | null
           goal_emoji: string | null
-          goal_name: string
+          goal_name: string | null
           id: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
           disciplines?: string[] | null
-          goal_date: string
+          goal_date?: string | null
           goal_emoji?: string | null
-          goal_name: string
+          goal_name?: string | null
           id?: string
-          user_id: string
+          updated_at?: string | null
+          user_id?: string
         }
         Update: {
           created_at?: string | null
           disciplines?: string[] | null
-          goal_date?: string
+          goal_date?: string | null
           goal_emoji?: string | null
-          goal_name?: string
+          goal_name?: string | null
           id?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -408,12 +390,12 @@ export type Database = {
           created_at: string | null
           disciplines: string[] | null
           display_name: string | null
-          trail_name: string | null
           equipment: string | null
           goal_date: string | null
           goal_emoji: string | null
           goal_name: string | null
           has_injuries: string | null
+          height_cm: number | null
           id: string
           level: string | null
           onboarding_completed: boolean | null
@@ -421,9 +403,10 @@ export type Database = {
           show_race_countdown: boolean | null
           show_recomp: boolean | null
           target_weight: number | null
+          trail_name: string | null
           training_days_per_week: number | null
           updated_at: string | null
-          user_id: string
+          user_id: string | null
           weight: number | null
           wellness_focuses: string[] | null
         }
@@ -433,12 +416,12 @@ export type Database = {
           created_at?: string | null
           disciplines?: string[] | null
           display_name?: string | null
-          trail_name?: string | null
           equipment?: string | null
           goal_date?: string | null
           goal_emoji?: string | null
           goal_name?: string | null
           has_injuries?: string | null
+          height_cm?: number | null
           id?: string
           level?: string | null
           onboarding_completed?: boolean | null
@@ -446,9 +429,10 @@ export type Database = {
           show_race_countdown?: boolean | null
           show_recomp?: boolean | null
           target_weight?: number | null
+          trail_name?: string | null
           training_days_per_week?: number | null
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
           weight?: number | null
           wellness_focuses?: string[] | null
         }
@@ -458,12 +442,12 @@ export type Database = {
           created_at?: string | null
           disciplines?: string[] | null
           display_name?: string | null
-          trail_name?: string | null
           equipment?: string | null
           goal_date?: string | null
           goal_emoji?: string | null
           goal_name?: string | null
           has_injuries?: string | null
+          height_cm?: number | null
           id?: string
           level?: string | null
           onboarding_completed?: boolean | null
@@ -471,9 +455,10 @@ export type Database = {
           show_race_countdown?: boolean | null
           show_recomp?: boolean | null
           target_weight?: number | null
+          trail_name?: string | null
           training_days_per_week?: number | null
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
           weight?: number | null
           wellness_focuses?: string[] | null
         }
@@ -593,15 +578,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      merge_body_battery_from_garmin: {
-        Args: {
-          p_user_id: string
-          p_date: string
-          p_body_battery: number
-          p_garmin_measured_at: string | null
-        }
-        Returns: undefined
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
