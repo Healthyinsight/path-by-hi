@@ -624,9 +624,9 @@ export default function Onboarding() {
                 value={t('onboarding.summaryDaysValue', { count: summary.days })}
               />
             </div>
-            <Button onClick={handleFinish} disabled={saving}
+            <Button onClick={goNext} disabled={saving}
               className="w-full h-[52px] text-base font-semibold rounded-lg mt-4">
-              {saving ? t('onboarding.saving') : t('onboarding.startJourney')}
+              {t('onboarding.next')}
             </Button>
           </StepContainer>
         );

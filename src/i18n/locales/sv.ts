@@ -57,6 +57,12 @@ export const sv = {
       weight_loss: 'Viktnedgång',
       wellness: 'Hälsa',
       custom: 'Eget mål',
+      IRONMAN: 'Triathlon / Ironman',
+      COMPETITOR: 'Tävlingslöpning',
+      RECOMP: 'Styrka / omkomposition',
+      WELLNESS: 'Hälsa',
+      COMEBACK: 'Comeback',
+      EXPLORER: 'Utforskare',
     },
   },
   sports: {

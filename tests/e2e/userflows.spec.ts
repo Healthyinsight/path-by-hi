@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { generateProfileWeeklySchedule } from '../../src/lib/scheduleEngine';
+import { loginAsTestUser } from './loginTestUser';
 
 // NOTE:
 // These flows assume either a dedicated test environment or a mocked auth/login helper.
@@ -53,23 +54,6 @@ async function seedNext4WeeksSchedule(supabase: any, userId: string, profile: an
   });
   const { error } = await supabase.from('training_schedule').insert(rows);
   if (error) throw error;
-}
-
-async function loginAsTestUser(page: any) {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const { data } = await supabase.auth.signInWithPassword({
-    email: 'test@pathtracker.dev',
-    password: 'TestUser2026!',
-  });
-
-  const sessionStr = JSON.stringify(data.session);
-
-  await page.addInitScript((s: string) => {
-    window.localStorage.setItem('sb-sbfkoeozczzgyvakxozh-auth-token', s);
-  }, sessionStr);
-
-  await page.goto('/');
-  await page.waitForTimeout(1500);
 }
 
 test.beforeAll(async () => {
@@ -134,16 +118,12 @@ test.describe('Onboarding – triathlon user', () => {
     await expect(page.getByText('Hur är din nuvarande form?', { exact: false })).toBeVisible();
     await page.getByTestId('onboarding-tri-level-beginner').click();
 
-    // Timing can vary (summary vs trail name). Handle both.
-    const trailTitle = page.getByText('Välj ditt Trail Name', { exact: false });
-    const summaryStart = page.getByRole('button', { name: /Starta min resa/i });
-
-    if (await trailTitle.isVisible().catch(() => false)) {
-      await page.getByRole('textbox').fill('Test Trail');
-      await page.getByRole('button', { name: /Fortsätt/i }).click();
-    } else {
-      await summaryStart.click();
-    }
+    // Summary comes before trail; advance to trail then finish (trail step calls handleFinish).
+    await expect(page.getByText(/Redo att börja/i)).toBeVisible({ timeout: 15000 });
+    await page.getByRole('button', { name: /Nästa/i }).click();
+    await expect(page.getByText('Välj ditt Trail Name', { exact: false })).toBeVisible({ timeout: 15000 });
+    await page.locator('input[maxlength="30"]').fill('Test Trail');
+    await page.getByRole('button', { name: /Fortsätt/i }).click();
 
     // User should land on TodayView (exact/role — avoid matching unrelated copy e.g. "… dagens pass")
     await expect(page.getByRole('heading', { name: '💡 Insikter' })).toBeVisible({ timeout: 15000 });
@@ -168,16 +148,11 @@ test.describe('Onboarding – strength user', () => {
     await expect(page.getByText('Hur ofta vill du träna?', { exact: false })).toBeVisible();
     await page.getByTestId('onboarding-strength-days-3').click();
 
-    // Timing can vary (summary vs trail name). Handle both.
-    const trailTitle = page.getByText('Välj ditt Trail Name', { exact: false });
-    const summaryStart = page.getByRole('button', { name: /Starta min resa/i });
-
-    if (await trailTitle.isVisible().catch(() => false)) {
-      await page.getByRole('textbox').fill('StyrkeTest');
-      await page.getByRole('button', { name: /Fortsätt/i }).click();
-    } else {
-      await summaryStart.click();
-    }
+    await expect(page.getByText(/Redo att börja/i)).toBeVisible({ timeout: 15000 });
+    await page.getByRole('button', { name: /Nästa/i }).click();
+    await expect(page.getByText('Välj ditt Trail Name', { exact: false })).toBeVisible({ timeout: 15000 });
+    await page.locator('input[maxlength="30"]').fill('StyrkeTest');
+    await page.getByRole('button', { name: /Fortsätt/i }).click();
 
     // Land on TodayView without error
     await expect(page.getByText('Insikter', { exact: false })).toBeVisible();

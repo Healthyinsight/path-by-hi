@@ -38,6 +38,7 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { generateProfileWeeklySchedule } from '../../src/lib/scheduleEngine';
+import { loginAsTestUser } from './loginTestUser';
 
 const SUPABASE_URL = 'https://sbfkoeozczzgyvakxozh.supabase.co';
 const SUPABASE_ANON_KEY =
@@ -88,20 +89,6 @@ async function seedNext4WeeksSchedule(supabase: any, userId: string, profile: an
   if (error) throw error;
 }
 
-async function loginAsTestUser(page: import('@playwright/test').Page) {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const { data } = await supabase.auth.signInWithPassword({
-    email: 'test@pathtracker.dev',
-    password: 'TestUser2026!',
-  });
-  const sessionStr = JSON.stringify(data.session);
-  await page.addInitScript((s: string) => {
-    window.localStorage.setItem('sb-sbfkoeozczzgyvakxozh-auth-token', s);
-  }, sessionStr);
-  await page.goto('/');
-  await page.waitForTimeout(1500);
-}
-
 function mondayOfCurrentWeek(): Date {
   const today = new Date();
   const day = today.getDay();
@@ -126,9 +113,21 @@ async function restoreIronBaseline(supabase: any) {
       archetype: 'IRONMAN',
       disciplines: ['swim', 'bike', 'run'],
       goal_date: goalDate,
+      goal_name: 'Ironman seed',
       onboarding_completed: true,
       trail_name: null,
       display_name: 'TestUser',
+    },
+    { onConflict: 'user_id' }
+  );
+  // Settings save upserts both user_profiles and user_goals; seed goals so UPDATE path is used (matches prod users who completed onboarding).
+  await supabase.from('user_goals').upsert(
+    {
+      user_id: testUserId,
+      goal_name: 'Ironman seed',
+      goal_date: goalDate,
+      goal_emoji: '🏊',
+      disciplines: ['swim', 'bike', 'run'],
     },
     { onConflict: 'user_id' }
   );
@@ -304,23 +303,42 @@ test.describe('Bug audit – Settings / profil', () => {
 
     const unique = `E2E mål ${Date.now()}`;
     await page.goto('/settings');
-    const goalCard = page.locator('.card-athletic').filter({ hasText: 'Mitt mål' }).first();
-    await goalCard.getByPlaceholder(/Ironman/i).fill(unique);
+    // Goal card is titled "Mitt mål" (settings.myGoal). The profile summary can also contain the
+    // substring "Mitt mål" as a *value* in an earlier card — use .last() so we target the edit card.
+    // Prefer stable test id when the deployed build includes it.
+    const byTestId = page.getByTestId('settings-goal-name-input');
+    if (await byTestId.count()) {
+      await byTestId.fill(unique);
+    } else {
+      await page
+        .locator('.card-athletic')
+        .filter({ has: page.getByText('Mitt mål', { exact: true }) })
+        .last()
+        .getByRole('textbox')
+        .first()
+        .fill(unique);
+    }
     await page.getByRole('button', { name: /Spara inställningar/i }).click();
     await expect(page.getByText('Inställningar sparade!', { exact: false })).toBeVisible({ timeout: 20000 });
 
     let goalsMatch = false;
     let profilesMatch = false;
-    for (let i = 0; i < 12; i++) {
-      const { data: g } = await supabase.from('user_goals').select('goal_name').eq('user_id', testUserId).maybeSingle();
-      const { data: p } = await supabase.from('user_profiles').select('goal_name').eq('user_id', testUserId).maybeSingle();
-      goalsMatch = g?.goal_name === unique;
-      profilesMatch = p?.goal_name === unique;
+    let lastG: string | null | undefined;
+    let lastP: string | null | undefined;
+    for (let i = 0; i < 24; i++) {
+      const { data: g, error: ge } = await supabase.from('user_goals').select('goal_name').eq('user_id', testUserId).maybeSingle();
+      const { data: p, error: pe } = await supabase.from('user_profiles').select('goal_name').eq('user_id', testUserId).maybeSingle();
+      if (ge) throw ge;
+      if (pe) throw pe;
+      lastG = g?.goal_name;
+      lastP = p?.goal_name;
+      goalsMatch = (g?.goal_name ?? '').trim() === unique.trim();
+      profilesMatch = (p?.goal_name ?? '').trim() === unique.trim();
       if (goalsMatch && profilesMatch) break;
-      await page.waitForTimeout(600);
+      await page.waitForTimeout(500);
     }
-    expect(goalsMatch).toBe(true);
-    expect(profilesMatch).toBe(true);
+    expect(goalsMatch, `user_goals.goal_name last=${JSON.stringify(lastG)} expected=${JSON.stringify(unique)}`).toBe(true);
+    expect(profilesMatch, `user_profiles.goal_name last=${JSON.stringify(lastP)} expected=${JSON.stringify(unique)}`).toBe(true);
   });
 
   test('Spara inställningar persists name to users AND display_name in user_profiles', async ({ page }) => {
@@ -412,14 +430,11 @@ test.describe('Bug audit – Retake quiz & onboarding DB', () => {
     await expect(page.getByText('Hur ofta vill du träna?', { exact: false })).toBeVisible();
     await page.getByTestId('onboarding-strength-days-3').click();
 
-    const trailTitle = page.getByText('Välj ditt Trail Name', { exact: false });
-    const summaryStart = page.getByRole('button', { name: /Starta min resa/i });
-    if (await trailTitle.isVisible().catch(() => false)) {
-      await page.getByRole('textbox').fill(trail);
-      await page.getByRole('button', { name: /Fortsätt/i }).click();
-    } else {
-      await summaryStart.click();
-    }
+    await expect(page.getByText(/Redo att börja/i)).toBeVisible({ timeout: 20000 });
+    await page.getByRole('button', { name: /Nästa/i }).click();
+    await expect(page.getByText('Välj ditt Trail Name', { exact: false })).toBeVisible({ timeout: 15000 });
+    await page.locator('input[maxlength="30"]').fill(trail);
+    await page.getByRole('button', { name: /Fortsätt/i }).click();
 
     await expect(page.getByText('Insikter', { exact: false })).toBeVisible({ timeout: 30000 });
 
@@ -496,14 +511,11 @@ test.describe('Bug audit – Retake quiz & onboarding DB', () => {
     await page.getByText('Nej, allt är bra', { exact: false }).click();
     await page.getByText('4 dagar/vecka', { exact: false }).click();
 
-    const trailTitle = page.getByText('Välj ditt Trail Name', { exact: false });
-    const summaryStart = page.getByRole('button', { name: /Starta min resa/i });
-    if (await trailTitle.isVisible().catch(() => false)) {
-      await page.getByRole('textbox').fill(newTrail);
-      await page.getByRole('button', { name: /Fortsätt/i }).click();
-    } else {
-      await summaryStart.click();
-    }
+    await expect(page.getByText(/Redo att börja/i)).toBeVisible({ timeout: 20000 });
+    await page.getByRole('button', { name: /Nästa/i }).click();
+    await expect(page.getByText('Välj ditt Trail Name', { exact: false })).toBeVisible({ timeout: 15000 });
+    await page.locator('input[maxlength="30"]').fill(newTrail);
+    await page.getByRole('button', { name: /Fortsätt/i }).click();
 
     await expect(page.getByText('Insikter', { exact: false })).toBeVisible({ timeout: 30000 });
 

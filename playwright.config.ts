@@ -5,6 +5,8 @@ export default defineConfig({
   use: {
     baseURL: 'https://tracker.healthyinsight.eu',
     browserName: 'chromium',
+    // Match assertions that expect Swedish UI (i18n keys in sv.ts).
+    locale: 'sv-SE',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },

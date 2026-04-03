@@ -57,6 +57,12 @@ export const en = {
       weight_loss: 'Weight loss',
       wellness: 'Wellness',
       custom: 'Custom',
+      IRONMAN: 'Triathlon / Ironman',
+      COMPETITOR: 'Competitive running',
+      RECOMP: 'Strength / recomposition',
+      WELLNESS: 'Wellness',
+      COMEBACK: 'Comeback',
+      EXPLORER: 'Explorer',
     },
   },
   sports: {
