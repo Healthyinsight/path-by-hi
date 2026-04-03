@@ -414,6 +414,7 @@ export type Database = {
           goal_emoji: string | null
           goal_name: string | null
           has_injuries: string | null
+          height_cm: number | null
           id: string
           level: string | null
           onboarding_completed: boolean | null
@@ -439,6 +440,7 @@ export type Database = {
           goal_emoji?: string | null
           goal_name?: string | null
           has_injuries?: string | null
+          height_cm?: number | null
           id?: string
           level?: string | null
           onboarding_completed?: boolean | null
@@ -464,6 +466,7 @@ export type Database = {
           goal_emoji?: string | null
           goal_name?: string | null
           has_injuries?: string | null
+          height_cm?: number | null
           id?: string
           level?: string | null
           onboarding_completed?: boolean | null

@@ -12,6 +12,10 @@ function getStoredLng(): string {
   } catch {
     /* ignore */
   }
+  if (typeof navigator !== 'undefined') {
+    const nav = (navigator.language || '').toLowerCase();
+    if (nav.startsWith('en')) return 'en';
+  }
   return 'sv';
 }
 

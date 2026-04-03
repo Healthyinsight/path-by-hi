@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { RACES_2026, type Race } from '@/data/races';
 
@@ -15,8 +16,11 @@ export function RaceSearchField({
   onSelect,
   onManualChange,
 }: RaceSearchFieldProps) {
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const listLocale = i18n.language.startsWith('en') ? 'en' : 'sv';
+  const dateLocale = i18n.language.startsWith('en') ? 'en-US' : 'sv-SE';
 
   const query = value;
 
@@ -34,11 +38,11 @@ export function RaceSearchField({
       const bPrimary = primaryType && b.type === primaryType;
       if (aPrimary && !bPrimary) return -1;
       if (!aPrimary && bPrimary) return 1;
-      return a.name.localeCompare(b.name, 'sv');
+      return a.name.localeCompare(b.name, listLocale);
     });
 
     return sorted.slice(0, 5);
-  }, [query, primaryType]);
+  }, [query, primaryType, listLocale]);
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -67,7 +71,7 @@ export function RaceSearchField({
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleDateString('sv-SE', {
+    return d.toLocaleDateString(dateLocale, {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
@@ -79,7 +83,7 @@ export function RaceSearchField({
       <Input
         value={value}
         onChange={handleChange}
-        placeholder="Sök bland populära lopp eller skriv eget..."
+        placeholder={t('onboarding.raceSearchPlaceholder')}
         className="h-[52px] rounded-lg"
         autoComplete="off"
       />

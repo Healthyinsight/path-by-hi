@@ -3,10 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { toFiniteNumber } from './utils';
 
-type ProfileRow = Database['public']['Tables']['user_profiles']['Row'];
-
-/** user_profiles-rad; `height_cm` finns i DB (migration) men kan saknas i äldre codegen. */
-export type UserProfile = ProfileRow & { height_cm?: number | null };
+export type UserProfile = Database['public']['Tables']['user_profiles']['Row'];
 
 export type UserProfileUpsert = Partial<Omit<UserProfile, 'id'>>;
 

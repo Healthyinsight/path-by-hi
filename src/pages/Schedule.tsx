@@ -47,7 +47,8 @@ function fmtShortDate(d: Date): string {
 }
 
 export default function Schedule() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const scheduleLang = i18n.language.startsWith('en') ? 'en' : 'sv';
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const [schedule, setSchedule] = useState<any[]>([]);
@@ -98,14 +99,14 @@ export default function Schedule() {
     for (let i = 0; i < weeks; i++) {
       const start = new Date(base);
       start.setDate(base.getDate() + i * 7);
-      allEntries.push(...generateProfileWeeklySchedule(profileInput, start));
+      allEntries.push(...generateProfileWeeklySchedule(profileInput, start, scheduleLang));
     }
     const rows = allEntries.map((e) => ({ ...e, user_id: user.id }));
     const { error } = await supabase.from('training_schedule').insert(rows);
     if (error) { toast.error(t('schedule.toastGenerateFail')); }
     else { toast.success(t('schedule.seedSuccess')); await loadSchedule(); }
     setGenerating(false);
-  }, [user, profile, loadSchedule, t]);
+  }, [user, profile, loadSchedule, t, scheduleLang]);
 
   const regenerateSchedule = useCallback(async () => {
     if (!user) return;
@@ -128,14 +129,14 @@ export default function Schedule() {
     for (let i = 0; i < weeks; i++) {
       const start = new Date(base);
       start.setDate(base.getDate() + i * 7);
-      allEntries.push(...generateProfileWeeklySchedule(profileInput, start));
+      allEntries.push(...generateProfileWeeklySchedule(profileInput, start, scheduleLang));
     }
     const rows = allEntries.map((e) => ({ ...e, user_id: user.id }));
     const { error } = await supabase.from('training_schedule').insert(rows);
     if (error) { toast.error(t('schedule.toastGenerateFail')); }
     else { toast.success(t('schedule.toastRegenerateOk')); await loadSchedule(); }
     setGenerating(false);
-  }, [user, profile, loadSchedule, t]);
+  }, [user, profile, loadSchedule, t, scheduleLang]);
 
   useEffect(() => { loadSchedule(); }, [loadSchedule]);
 

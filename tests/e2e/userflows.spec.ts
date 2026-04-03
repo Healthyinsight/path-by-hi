@@ -111,15 +111,14 @@ test.describe('Onboarding – triathlon user', () => {
     await page.getByRole('button', { name: /Nästa/i }).click();
     // Archetype: Triathlon
     await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
-    await page.getByText('Triathlon / Ironman', { exact: false }).click();
+    await page.getByTestId('onboarding-goal-triathlon').click();
 
-    // Tri distance – go straight to distance option
-    await expect(page.getByText('70.3 / Halv-Ironman', { exact: false })).toBeVisible({ timeout: 15000 });
-    await page.getByText('70.3 / Halv-Ironman', { exact: false }).click();
+    await expect(page.getByTestId('onboarding-tri-distance-half')).toBeVisible({ timeout: 15000 });
+    await page.getByTestId('onboarding-tri-distance-half').click();
 
     // Race step
     await expect(page.getByText('Har du ett race inbokat?')).toBeVisible();
-    await page.getByRole('button', { name: 'Ja Jag har ett specifikt lopp' }).click();
+    await page.getByTestId('onboarding-tri-race-yes').click();
 
     const search = page.getByPlaceholder('Sök bland populära lopp eller skriv eget...');
     await search.fill('Göteborg');
@@ -133,7 +132,7 @@ test.describe('Onboarding – triathlon user', () => {
 
     // Continue through the remaining triathlon-specific steps until trail name
     await expect(page.getByText('Hur är din nuvarande form?', { exact: false })).toBeVisible();
-    await page.getByText('Nybörjare', { exact: false }).click();
+    await page.getByTestId('onboarding-tri-level-beginner').click();
 
     // Timing can vary (summary vs trail name). Handle both.
     const trailTitle = page.getByText('Välj ditt Trail Name', { exact: false });
@@ -158,17 +157,16 @@ test.describe('Onboarding – strength user', () => {
     await page.getByPlaceholder('Ditt förnamn').fill('TestUser');
     await page.getByRole('button', { name: /Nästa/i }).click();
     await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
-    await page.getByText('Bli starkare', { exact: false }).click();
+    await page.getByTestId('onboarding-goal-strength').click();
 
-    // Equipment step – click directly on an option
-    await expect(page.getByText('Fullt gym', { exact: false })).toBeVisible({ timeout: 15000 });
-    await page.getByText('Fullt gym', { exact: false }).click();
+    await expect(page.getByTestId('onboarding-strength-equipment-full_gym')).toBeVisible({ timeout: 15000 });
+    await page.getByTestId('onboarding-strength-equipment-full_gym').click();
 
     await expect(page.getByText('Har du några skador', { exact: false })).toBeVisible();
-    await page.getByText('Nej, allt är bra', { exact: false }).click();
+    await page.getByTestId('onboarding-strength-injury-no').click();
 
     await expect(page.getByText('Hur ofta vill du träna?', { exact: false })).toBeVisible();
-    await page.getByText('3 dagar/vecka', { exact: false }).click();
+    await page.getByTestId('onboarding-strength-days-3').click();
 
     // Timing can vary (summary vs trail name). Handle both.
     const trailTitle = page.getByText('Välj ditt Trail Name', { exact: false });

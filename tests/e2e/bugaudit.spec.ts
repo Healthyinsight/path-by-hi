@@ -404,13 +404,13 @@ test.describe('Bug audit – Retake quiz & onboarding DB', () => {
     await page.getByPlaceholder('Ditt förnamn').fill('AuditUser');
     await page.getByRole('button', { name: /Nästa/i }).click();
     await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
-    await page.getByText('Bli starkare', { exact: false }).click();
-    await expect(page.getByText('Fullt gym', { exact: false })).toBeVisible({ timeout: 20000 });
-    await page.getByText('Fullt gym', { exact: false }).click();
+    await page.getByTestId('onboarding-goal-strength').click();
+    await expect(page.getByTestId('onboarding-strength-equipment-full_gym')).toBeVisible({ timeout: 20000 });
+    await page.getByTestId('onboarding-strength-equipment-full_gym').click();
     await expect(page.getByText('Har du några skador', { exact: false })).toBeVisible();
-    await page.getByText('Nej, allt är bra', { exact: false }).click();
+    await page.getByTestId('onboarding-strength-injury-no').click();
     await expect(page.getByText('Hur ofta vill du träna?', { exact: false })).toBeVisible();
-    await page.getByText('3 dagar/vecka', { exact: false }).click();
+    await page.getByTestId('onboarding-strength-days-3').click();
 
     const trailTitle = page.getByText('Välj ditt Trail Name', { exact: false });
     const summaryStart = page.getByRole('button', { name: /Starta min resa/i });
