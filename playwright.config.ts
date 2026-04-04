@@ -16,6 +16,8 @@ export default defineConfig({
   use: {
     baseURL: E2E_ORIGIN,
     browserName: 'chromium',
+    // Match assertions that expect Swedish UI (i18n keys in sv.ts).
+    locale: 'sv-SE',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     serviceWorkers: 'block',

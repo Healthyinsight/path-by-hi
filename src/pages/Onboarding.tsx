@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
@@ -10,76 +11,38 @@ import { ArrowLeft, Calendar as CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import type { Locale } from 'date-fns';
 import { format } from 'date-fns';
-import { sv } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
+import { sv as dateFnsSv } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { RaceSearchField } from '@/components/RaceSearchField';
-
-type Archetype = 'triathlon' | 'running' | 'strength' | 'weight_loss' | 'wellness' | 'custom';
-
-interface QuizState {
-  display_name: string;
-  trail_name: string;
-  archetype: Archetype | '';
-  // triathlon
-  tri_distance: string;
-  has_race: boolean | null;
-  race_name: string;
-  race_date: Date | undefined;
-  race_autofilled: boolean;
-  tri_level: string;
-  // running
-  run_distance: string;
-  run_has_race: boolean | null;
-  run_race_name: string;
-  run_race_date: Date | undefined;
-  run_race_autofilled: boolean;
-  run_frequency: string;
-  // strength
-  equipment: string;
-  has_injuries: string;
-  injury_text: string;
-  strength_days: number;
-  // weight loss
-  weight: string;
-  target_weight: string;
-  wl_activity: string;
-  // wellness
-  wellness_focuses: string[];
-  wellness_activity: string;
-  // custom
-  custom_goal: string;
-  custom_archetype: string;
-  custom_date: Date | undefined;
-  custom_no_date: boolean;
-}
-
-const initialState: QuizState = {
-  display_name: '',
-  trail_name: '',
-  archetype: '',
-  tri_distance: '', has_race: null, race_name: '', race_date: undefined, race_autofilled: false, tri_level: '',
-  run_distance: '', run_has_race: null, run_race_name: '', run_race_date: undefined, run_race_autofilled: false, run_frequency: '',
-  equipment: '', has_injuries: '', injury_text: '', strength_days: 4,
-  weight: '', target_weight: '', wl_activity: '',
-  wellness_focuses: [], wellness_activity: '',
-  custom_goal: '', custom_archetype: '', custom_date: undefined, custom_no_date: false,
-};
-
-function addMonths(months: number): Date {
-  const d = new Date();
-  d.setMonth(d.getMonth() + months);
-  return d;
-}
-
-function fmtDateStr(d: Date): string {
-  return d.toISOString().split('T')[0];
-}
+import type { Archetype, QuizState } from '@/onboarding/quizTypes';
+import { initialQuizState } from '@/onboarding/quizTypes';
+import {
+  CUSTOM_MAP_OPTIONS,
+  getStepsForArchetype,
+  GOAL_OPTIONS,
+  onboardingTestId,
+  RUN_DISTANCE_KEYS,
+  RUN_FREQUENCY_OPTIONS,
+  STRENGTH_EQUIPMENT_OPTIONS,
+  TRI_DISTANCE_KEYS,
+  TRI_LEVEL_OPTIONS,
+  type QuizStepName,
+  WL_ACTIVITY_OPTIONS,
+  WELLNESS_ACTIVITY_OPTIONS,
+  WELLNESS_FOCUS_OPTIONS,
+} from '@/onboarding/quizConfig';
+import { mapQuizStateToSaveBundle } from '@/onboarding/mapToProfile';
 
 export default function Onboarding() {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [state, setState] = useState<QuizState>(initialState);
+  const dateLocale: Locale = i18n.language.startsWith('en') ? enUS : dateFnsSv;
+  const dateLocaleStr = i18n.language.startsWith('en') ? 'en-US' : 'sv-SE';
+  const [state, setState] = useState<QuizState>(initialQuizState);
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState<'left' | 'right'>('left');
   const [saving, setSaving] = useState(false);
@@ -110,20 +73,7 @@ export default function Onboarding() {
     setState(s => ({ ...s, [key]: val }));
   }, []);
 
-  // Compute steps based on archetype
-  const getSteps = (): string[] => {
-    const base = ['name', 'goal'];
-    const arch = state.archetype;
-    if (arch === 'triathlon') return [...base, 'tri_distance', 'tri_race', 'tri_level', 'summary', 'trail_name'];
-    if (arch === 'running') return [...base, 'run_distance', 'run_race', 'run_frequency', 'summary', 'trail_name'];
-    if (arch === 'strength') return [...base, 'str_equipment', 'str_injuries', 'str_days', 'summary', 'trail_name'];
-    if (arch === 'weight_loss') return [...base, 'wl_weight', 'wl_target', 'wl_activity', 'summary', 'trail_name'];
-    if (arch === 'wellness') return [...base, 'well_focus', 'well_activity', 'summary', 'trail_name'];
-    if (arch === 'custom') return [...base, 'cust_describe', 'cust_map', 'cust_date', 'summary', 'trail_name'];
-    return base;
-  };
-
-  const steps = getSteps();
+  const steps = getStepsForArchetype(state.archetype);
   const totalSteps = steps.length;
   const currentStepName = steps[step] || 'name';
   const progress = ((step + 1) / totalSteps) * 100;
@@ -132,7 +82,7 @@ export default function Onboarding() {
   const goBack = () => { setDirection('right'); setStep(s => Math.max(s - 1, 0)); };
 
   const canProceed = (): boolean => {
-    switch (currentStepName) {
+    switch (currentStepName as QuizStepName) {
       case 'name': return state.display_name.trim().length > 0;
       case 'goal': return state.archetype !== '';
       case 'tri_distance': return state.tri_distance !== '';
@@ -157,224 +107,68 @@ export default function Onboarding() {
     }
   };
 
-  // Build final profile data
-  const buildProfileData = () => {
-    const arch = state.archetype as Archetype;
-    let goal_name = '';
-    let goal_date = fmtDateStr(addMonths(3));
-    let goal_emoji = '✨';
-    let level = 'intermediate';
-    let disciplines: string[] = ['run', 'strength'];
-    let training_days = 4;
-    let show_nutrition = true;
-    let show_race_countdown = false;
-    let show_recomp = false;
-    let weight: number | null = null;
-    let target_weight: number | null = null;
-    let has_injuries: string | null = null;
-    let equipment = 'full_gym';
-    let wellness_focuses: string[] | null = null;
-
-    if (arch === 'triathlon') {
-      const distLabels: Record<string, string> = { sprint: 'Sprint Triathlon', olympic: 'Olympisk Triathlon', half: 'Ironman 70.3', full: 'Full Ironman' };
-      goal_name = state.has_race && state.race_name ? state.race_name : distLabels[state.tri_distance] || 'Triathlon';
-      goal_date = state.has_race && state.race_date ? fmtDateStr(state.race_date) : fmtDateStr(addMonths(6));
-      goal_emoji = '🏊';
-      disciplines = ['swim', 'bike', 'run', 'strength'];
-      show_race_countdown = true;
-      const levelMap: Record<string, { level: string; days: number }> = {
-        beginner: { level: 'beginner', days: 4 },
-        intermediate: { level: 'intermediate', days: 5 },
-        advanced: { level: 'advanced', days: 6 },
-      };
-      const lm = levelMap[state.tri_level] || levelMap.intermediate;
-      level = lm.level;
-      training_days = lm.days;
-    } else if (arch === 'running') {
-      const distLabels: Record<string, string> = { '5k': '5K', '10k': '10K', half: 'Halvmarathon', marathon: 'Marathon', ultra: 'Ultramarathon' };
-      goal_name = state.run_has_race && state.run_race_name ? state.run_race_name : (distLabels[state.run_distance] || 'Löplopp');
-      goal_date = state.run_has_race && state.run_race_date ? fmtDateStr(state.run_race_date) : fmtDateStr(addMonths(4));
-      goal_emoji = '🏃';
-      disciplines = ['run', 'strength'];
-      show_race_countdown = !!state.run_has_race;
-      const freqMap: Record<string, { level: string; days: number }> = {
-        low: { level: 'beginner', days: 3 },
-        medium: { level: 'intermediate', days: 4 },
-        high: { level: 'advanced', days: 5 },
-      };
-      const fm = freqMap[state.run_frequency] || freqMap.medium;
-      level = fm.level;
-      training_days = fm.days;
-    } else if (arch === 'strength') {
-      goal_name = 'Bli starkare';
-      goal_emoji = '💪';
-      disciplines = ['strength'];
-      show_race_countdown = false;
-      show_nutrition = true;
-      equipment = state.equipment;
-      has_injuries = state.has_injuries === 'yes' ? state.injury_text : null;
-      training_days = state.strength_days;
-      level = 'intermediate';
-    } else if (arch === 'weight_loss') {
-      goal_name = 'Viktnedgång';
-      goal_emoji = '🎯';
-      goal_date = fmtDateStr(addMonths(4));
-      disciplines = ['run', 'strength'];
-      show_recomp = true;
-      show_nutrition = true;
-      weight = state.weight ? Number(state.weight) : null;
-      target_weight = state.target_weight ? Number(state.target_weight) : (weight ? weight * 0.9 : null);
-      const actMap: Record<string, { level: string; days: number; disc: string[] }> = {
-        regular: { level: 'intermediate', days: 4, disc: ['run', 'strength'] },
-        sometimes: { level: 'beginner', days: 3, disc: ['run', 'strength'] },
-        none: { level: 'beginner', days: 3, disc: ['strength'] },
-      };
-      const am = actMap[state.wl_activity] || actMap.sometimes;
-      level = am.level;
-      training_days = am.days;
-      disciplines = am.disc;
-    } else if (arch === 'wellness') {
-      goal_name = 'Hälsosammare livsstil';
-      goal_emoji = '🌿';
-      goal_date = fmtDateStr(addMonths(3));
-      show_race_countdown = false;
-      wellness_focuses = state.wellness_focuses;
-      show_nutrition = state.wellness_focuses.includes('kost');
-      const discMap: string[] = [];
-      if (state.wellness_focuses.includes('rörelse')) discMap.push('run');
-      if (state.wellness_focuses.includes('kost')) discMap.push('strength');
-      if (discMap.length === 0) discMap.push('run');
-      disciplines = discMap;
-      const actMap: Record<string, { level: string; days: number }> = {
-        sedentary: { level: 'beginner', days: 3 },
-        light: { level: 'intermediate', days: 4 },
-        active: { level: 'intermediate', days: 5 },
-      };
-      const wm = actMap[state.wellness_activity] || actMap.light;
-      level = wm.level;
-      training_days = wm.days;
-    } else if (arch === 'custom') {
-      goal_name = state.custom_goal;
-      goal_emoji = '✨';
-      goal_date = state.custom_no_date || !state.custom_date ? fmtDateStr(addMonths(3)) : fmtDateStr(state.custom_date);
-      // Remap archetype for app config
-      const remap: Record<string, Archetype> = {
-        endurance: 'running', strength: 'strength', weight_loss: 'weight_loss', wellness: 'wellness',
-      };
-      const mapped = remap[state.custom_archetype] || 'wellness';
-      // We'll store the original 'custom' but apply settings from mapped
-      if (mapped === 'running') { disciplines = ['run', 'strength']; show_race_countdown = true; }
-      else if (mapped === 'strength') { disciplines = ['strength']; }
-      else if (mapped === 'weight_loss') { disciplines = ['run', 'strength']; show_recomp = true; show_nutrition = true; }
-      else { disciplines = ['run', 'strength']; }
-    }
-
-    return {
-      user_id: user!.id,
-      display_name: state.display_name,
-      trail_name: state.trail_name || null,
-      archetype: arch,
-      goal_name,
-      goal_date,
-      goal_emoji,
-      level,
-      disciplines,
-      training_days_per_week: training_days,
-      weight,
-      target_weight,
-      body_fat_pct: null,
-      has_injuries: has_injuries,
-      equipment,
-      show_nutrition,
-      show_race_countdown,
-      show_recomp,
-      onboarding_completed: true,
-      wellness_focuses: wellness_focuses,
-    };
-  };
-
   const handleFinish = async () => {
     setSaving(true);
 
-    // Always verify auth before saving
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) {
-      toast.error('Inte inloggad. Logga in igen.');
+      toast.error(t('onboarding.toastNotAuthenticated'));
       setSaving(false);
       navigate('/login', { replace: true });
       return;
     }
 
     try {
-      const profileData = buildProfileData();
-      // Override user_id from verified auth
-      profileData.user_id = authUser.id;
+      const bundle = mapQuizStateToSaveBundle(authUser.id, state, t);
+      const profilePayload = { ...bundle.profile, updated_at: new Date().toISOString() };
 
       const { error: profileError } = await (supabase as any)
         .from('user_profiles')
-        .upsert(
-          {
-            ...profileData,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id' }
-        );
+        .upsert(profilePayload, { onConflict: 'user_id' });
 
       if (profileError) {
         console.error('Profile save error:', profileError);
-        toast.error('Kunde inte spara profilen. Försök igen.');
+        toast.error(t('onboarding.toastProfileSaveFail'));
         return;
       }
 
-      toast.success('Profil sparad!');
+      toast.success(t('onboarding.toastProfileSaved'));
 
-      // Also save to user_goals for mountain timeline
-      const { error: goalsError } = await supabase.from('user_goals').upsert(
-        {
-          user_id: authUser.id,
-          goal_name: profileData.goal_name || 'Mitt mål',
-          goal_date: profileData.goal_date,
-          goal_emoji: profileData.goal_emoji,
-          disciplines: profileData.disciplines,
-        },
-        { onConflict: 'user_id' }
-      );
+      const { error: goalsError } = await supabase.from('user_goals').upsert(bundle.goal, { onConflict: 'user_id' });
       if (goalsError) {
         console.error('Goal save error:', goalsError);
-        toast.error('Kunde inte spara mål.');
+        toast.error(t('onboarding.toastGoalSaveFail'));
       }
 
-      // Update users table with name
       const { error: nameError } = await supabase
         .from('users')
-        .update({ name: profileData.display_name })
+        .update({ name: bundle.displayNameForUsersTable })
         .eq('id', authUser.id);
       if (nameError) {
         console.error('Name update error:', nameError);
-        toast.error('Kunde inte uppdatera namn.');
+        toast.error(t('onboarding.toastNameUpdateFail'));
       }
 
       navigate('/', { replace: true });
     } catch (err) {
       console.error('handleFinish failed:', err);
-      toast.error('Kunde inte spara profilen. Försök igen.');
+      toast.error(t('onboarding.toastProfileSaveFail'));
     } finally {
       setSaving(false);
     }
   };
 
-  // Summary data
   const getSummary = () => {
-    const d = buildProfileData();
-    const archLabels: Record<string, string> = {
-      triathlon: 'Triathlon', running: 'Löpning', strength: 'Styrka',
-      weight_loss: 'Viktnedgång', wellness: 'Hälsa', custom: 'Eget mål',
-    };
+    if (!user?.id || !state.archetype) {
+      return { goal: '', date: '', type: '', days: 0 };
+    }
+    const d = mapQuizStateToSaveBundle(user.id, state, t).profile;
+    const atype = d.archetype as Archetype;
     return {
       goal: d.goal_name,
       date: d.goal_date,
-      type: archLabels[d.archetype] || d.archetype,
-      days: d.training_days_per_week,
+      type: t(`settings.archetypes.${atype}`, { defaultValue: String(d.archetype) }),
+      days: d.training_days_per_week ?? 0,
     };
   };
 
@@ -382,11 +176,11 @@ export default function Onboarding() {
     switch (currentStepName) {
       case 'name':
         return (
-          <StepContainer title="Hej! Vad heter du?">
+          <StepContainer title={t('onboarding.nameTitle')}>
             <Input
               value={state.display_name}
               onChange={e => set('display_name', e.target.value)}
-              placeholder="Ditt förnamn"
+              placeholder={t('onboarding.namePlaceholder')}
               className="h-[52px] text-lg rounded-lg"
               autoFocus
               onKeyDown={e => e.key === 'Enter' && canProceed() && goNext()}
@@ -396,21 +190,15 @@ export default function Onboarding() {
 
       case 'goal':
         return (
-          <StepContainer title="Vad vill du uppnå?">
+          <StepContainer title={t('onboarding.goalTitle')}>
             <div className="space-y-3">
-              {([
-                { key: 'triathlon', emoji: '🏊', title: 'Triathlon / Ironman', desc: 'Träna för ett triathlon-lopp' },
-                { key: 'running', emoji: '🏃', title: 'Löplopp', desc: 'Från 5K till ultramarathon' },
-                { key: 'strength', emoji: '💪', title: 'Bli starkare', desc: 'Bygga muskler och styrka' },
-                { key: 'weight_loss', emoji: '🎯', title: 'Gå ner i vikt', desc: 'Tappa fett, få bättre hälsa' },
-                { key: 'wellness', emoji: '🌿', title: 'Bli hälsosammare', desc: 'Bättre vanor, mer energi' },
-                { key: 'custom', emoji: '✨', title: 'Eget mål', desc: 'Beskriv ditt eget mål' },
-              ] as const).map(opt => (
+              {GOAL_OPTIONS.map(opt => (
                 <OptionCard
                   key={opt.key}
+                  dataTestId={onboardingTestId.goal(opt.key)}
                   emoji={opt.emoji}
-                  title={opt.title}
-                  description={opt.desc}
+                  title={t(`onboarding.goals.${opt.key}.title`)}
+                  description={t(`onboarding.goals.${opt.key}.desc`)}
                   selected={state.archetype === opt.key}
                   onClick={() => { set('archetype', opt.key); setTimeout(goNext, 200); }}
                 />
@@ -422,17 +210,17 @@ export default function Onboarding() {
       // TRIATHLON
       case 'tri_distance':
         return (
-          <StepContainer title="Vilken distans?">
+          <StepContainer title={t('onboarding.triDistanceTitle')}>
             <div className="space-y-3">
-              {[
-                { key: 'sprint', label: 'Sprint', desc: '750m / 20km / 5km' },
-                { key: 'olympic', label: 'Olympisk', desc: '1.5km / 40km / 10km' },
-                { key: 'half', label: '70.3 / Halv-Ironman', desc: '1.9km / 90km / 21.1km' },
-                { key: 'full', label: 'Full Ironman', desc: '3.8km / 180km / 42.2km' },
-              ].map(opt => (
-                <OptionCard key={opt.key} title={opt.label} description={opt.desc}
-                  selected={state.tri_distance === opt.key}
-                  onClick={() => { set('tri_distance', opt.key); setTimeout(goNext, 200); }} />
+              {TRI_DISTANCE_KEYS.map((key) => (
+                <OptionCard
+                  key={key}
+                  dataTestId={onboardingTestId.triDistance(key)}
+                  title={t(`onboarding.triDistances.${key}.label`)}
+                  description={t(`onboarding.triDistances.${key}.desc`)}
+                  selected={state.tri_distance === key}
+                  onClick={() => { set('tri_distance', key); setTimeout(goNext, 200); }}
+                />
               ))}
             </div>
           </StepContainer>
@@ -440,17 +228,27 @@ export default function Onboarding() {
 
       case 'tri_race':
         return (
-          <StepContainer title="Har du ett race inbokat?">
+          <StepContainer title={t('onboarding.triRaceTitle')}>
             <div className="space-y-3">
-              <OptionCard title="Ja" description="Jag har ett specifikt lopp"
-                selected={state.has_race === true} onClick={() => set('has_race', true)} />
-              <OptionCard title="Nej, jag tränar generellt" description="Inget specifikt lopp ännu"
-                selected={state.has_race === false} onClick={() => { set('has_race', false); setTimeout(goNext, 200); }} />
+              <OptionCard
+                dataTestId={onboardingTestId.triRaceYes()}
+                title={t('onboarding.triRaceYesTitle')}
+                description={t('onboarding.triRaceYesDesc')}
+                selected={state.has_race === true}
+                onClick={() => set('has_race', true)}
+              />
+              <OptionCard
+                dataTestId={onboardingTestId.triRaceNo()}
+                title={t('onboarding.triRaceNoTitle')}
+                description={t('onboarding.triRaceNoDesc')}
+                selected={state.has_race === false}
+                onClick={() => { set('has_race', false); setTimeout(goNext, 200); }}
+              />
             </div>
             {state.has_race && (
               <div className="mt-4 space-y-3">
                 <div className="space-y-1">
-                  <Label className="text-sm">Sök bland populära lopp eller skriv eget</Label>
+                  <Label className="text-sm">{t('onboarding.raceSearchLabel')}</Label>
                   <RaceSearchField
                     value={state.race_name}
                     primaryType="triathlon"
@@ -467,13 +265,18 @@ export default function Onboarding() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-sm">Datum</Label>
+                  <Label className="text-sm">{t('onboarding.dateLabel')}</Label>
                   {state.race_autofilled && state.race_date ? (
                     <p className="text-sm text-muted-foreground">
-                      ✓ {state.race_name} – {format(state.race_date, 'PPP', { locale: sv })}
+                      ✓ {state.race_name} – {format(state.race_date, 'PPP', { locale: dateLocale })}
                     </p>
                   ) : (
-                    <DatePickerField date={state.race_date} onSelect={d => set('race_date', d)} />
+                    <DatePickerField
+                      date={state.race_date}
+                      onSelect={d => set('race_date', d)}
+                      locale={dateLocale}
+                      emptyLabel={t('onboarding.pickDate')}
+                    />
                   )}
                 </div>
               </div>
@@ -483,16 +286,18 @@ export default function Onboarding() {
 
       case 'tri_level':
         return (
-          <StepContainer title="Hur är din nuvarande form?">
+          <StepContainer title={t('onboarding.triLevelTitle')}>
             <div className="space-y-3">
-              {[
-                { key: 'beginner', emoji: '🌱', label: 'Nybörjare', desc: 'Ny inom triathlon' },
-                { key: 'intermediate', emoji: '📊', label: 'Medel', desc: 'Har tränat ett tag' },
-                { key: 'advanced', emoji: '🔥', label: 'Erfaren', desc: 'Gjort flera lopp' },
-              ].map(opt => (
-                <OptionCard key={opt.key} emoji={opt.emoji} title={opt.label} description={opt.desc}
+              {TRI_LEVEL_OPTIONS.map(opt => (
+                <OptionCard
+                  key={opt.key}
+                  dataTestId={onboardingTestId.triLevel(opt.key)}
+                  emoji={opt.emoji}
+                  title={t(`onboarding.triLevels.${opt.key}.label`)}
+                  description={t(`onboarding.triLevels.${opt.key}.desc`)}
                   selected={state.tri_level === opt.key}
-                  onClick={() => { set('tri_level', opt.key); setTimeout(goNext, 200); }} />
+                  onClick={() => { set('tri_level', opt.key); setTimeout(goNext, 200); }}
+                />
               ))}
             </div>
           </StepContainer>
@@ -501,11 +306,16 @@ export default function Onboarding() {
       // RUNNING
       case 'run_distance':
         return (
-          <StepContainer title="Vilken distans siktar du på?">
+          <StepContainer title={t('onboarding.runDistanceTitle')}>
             <div className="space-y-3">
-              {['5K', '10K', 'Halvmarathon', 'Marathon', 'Ultra'].map(d => (
-                <OptionCard key={d} title={d} selected={state.run_distance === d.toLowerCase().replace('halvmarathon','half')}
-                  onClick={() => { set('run_distance', d.toLowerCase().replace('halvmarathon','half')); setTimeout(goNext, 200); }} />
+              {RUN_DISTANCE_KEYS.map((key) => (
+                <OptionCard
+                  key={key}
+                  dataTestId={onboardingTestId.runDistance(key)}
+                  title={t(`onboarding.runDistances.${key}.title`)}
+                  selected={state.run_distance === key}
+                  onClick={() => { set('run_distance', key); setTimeout(goNext, 200); }}
+                />
               ))}
             </div>
           </StepContainer>
@@ -513,17 +323,27 @@ export default function Onboarding() {
 
       case 'run_race':
         return (
-          <StepContainer title="Har du ett lopp inbokat?">
+          <StepContainer title={t('onboarding.runRaceTitle')}>
             <div className="space-y-3">
-              <OptionCard title="Ja" description="Jag har ett specifikt lopp"
-                selected={state.run_has_race === true} onClick={() => set('run_has_race', true)} />
-              <OptionCard title="Nej" description="Tränar utan specifikt lopp"
-                selected={state.run_has_race === false} onClick={() => { set('run_has_race', false); setTimeout(goNext, 200); }} />
+              <OptionCard
+                dataTestId={onboardingTestId.runRaceYes()}
+                title={t('onboarding.runRaceYesTitle')}
+                description={t('onboarding.runRaceYesDesc')}
+                selected={state.run_has_race === true}
+                onClick={() => set('run_has_race', true)}
+              />
+              <OptionCard
+                dataTestId={onboardingTestId.runRaceNo()}
+                title={t('onboarding.runRaceNoTitle')}
+                description={t('onboarding.runRaceNoDesc')}
+                selected={state.run_has_race === false}
+                onClick={() => { set('run_has_race', false); setTimeout(goNext, 200); }}
+              />
             </div>
             {state.run_has_race && (
               <div className="mt-4 space-y-3">
                 <div className="space-y-1">
-                  <Label className="text-sm">Sök bland populära lopp eller skriv eget</Label>
+                  <Label className="text-sm">{t('onboarding.raceSearchLabel')}</Label>
                   <RaceSearchField
                     value={state.run_race_name}
                     primaryType="running"
@@ -540,13 +360,18 @@ export default function Onboarding() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-sm">Datum</Label>
+                  <Label className="text-sm">{t('onboarding.dateLabel')}</Label>
                   {state.run_race_autofilled && state.run_race_date ? (
                     <p className="text-sm text-muted-foreground">
-                      ✓ {state.run_race_name} – {format(state.run_race_date, 'PPP', { locale: sv })}
+                      ✓ {state.run_race_name} – {format(state.run_race_date, 'PPP', { locale: dateLocale })}
                     </p>
                   ) : (
-                    <DatePickerField date={state.run_race_date} onSelect={d => set('run_race_date', d)} />
+                    <DatePickerField
+                      date={state.run_race_date}
+                      onSelect={d => set('run_race_date', d)}
+                      locale={dateLocale}
+                      emptyLabel={t('onboarding.pickDate')}
+                    />
                   )}
                 </div>
               </div>
@@ -556,16 +381,17 @@ export default function Onboarding() {
 
       case 'run_frequency':
         return (
-          <StepContainer title="Hur ofta springer du nu?">
+          <StepContainer title={t('onboarding.runFreqTitle')}>
             <div className="space-y-3">
-              {[
-                { key: 'low', label: '0-1 gånger/vecka', emoji: '🌱' },
-                { key: 'medium', label: '2-3 gånger/vecka', emoji: '📊' },
-                { key: 'high', label: '4+ gånger/vecka', emoji: '🔥' },
-              ].map(opt => (
-                <OptionCard key={opt.key} emoji={opt.emoji} title={opt.label}
+              {RUN_FREQUENCY_OPTIONS.map(opt => (
+                <OptionCard
+                  key={opt.key}
+                  dataTestId={onboardingTestId.runFrequency(opt.key)}
+                  emoji={opt.emoji}
+                  title={t(`onboarding.runFreq.${opt.key}.label`)}
                   selected={state.run_frequency === opt.key}
-                  onClick={() => { set('run_frequency', opt.key); setTimeout(goNext, 200); }} />
+                  onClick={() => { set('run_frequency', opt.key); setTimeout(goNext, 200); }}
+                />
               ))}
             </div>
           </StepContainer>
@@ -574,16 +400,17 @@ export default function Onboarding() {
       // STRENGTH
       case 'str_equipment':
         return (
-          <StepContainer title="Vad har du tillgång till?">
+          <StepContainer title={t('onboarding.strEquipmentTitle')}>
             <div className="space-y-3">
-              {[
-                { key: 'full_gym', emoji: '🏋️', label: 'Fullt gym' },
-                { key: 'home_gym', emoji: '🏠', label: 'Hemmagym / Grundutrustning' },
-                { key: 'bodyweight', emoji: '🧘', label: 'Bara kroppsvikt' },
-              ].map(opt => (
-                <OptionCard key={opt.key} emoji={opt.emoji} title={opt.label}
+              {STRENGTH_EQUIPMENT_OPTIONS.map(opt => (
+                <OptionCard
+                  key={opt.key}
+                  dataTestId={onboardingTestId.strengthEquipment(opt.key)}
+                  emoji={opt.emoji}
+                  title={t(`onboarding.strEquipment.${opt.key}.label`)}
                   selected={state.equipment === opt.key}
-                  onClick={() => { set('equipment', opt.key); setTimeout(goNext, 200); }} />
+                  onClick={() => { set('equipment', opt.key); setTimeout(goNext, 200); }}
+                />
               ))}
             </div>
           </StepContainer>
@@ -591,20 +418,28 @@ export default function Onboarding() {
 
       case 'str_injuries':
         return (
-          <StepContainer title="Har du några skador eller begränsningar?">
+          <StepContainer title={t('onboarding.strInjuriesTitle')}>
             <div className="space-y-3">
-              <OptionCard title="Nej, allt är bra" emoji="✅"
+              <OptionCard
+                dataTestId={onboardingTestId.strengthInjuryNo()}
+                title={t('onboarding.strInjuryNo')}
+                emoji="✅"
                 selected={state.has_injuries === 'no'}
-                onClick={() => { set('has_injuries', 'no'); setTimeout(goNext, 200); }} />
-              <OptionCard title="Ja" emoji="⚠️"
+                onClick={() => { set('has_injuries', 'no'); setTimeout(goNext, 200); }}
+              />
+              <OptionCard
+                dataTestId={onboardingTestId.strengthInjuryYes()}
+                title={t('onboarding.strInjuryYes')}
+                emoji="⚠️"
                 selected={state.has_injuries === 'yes'}
-                onClick={() => set('has_injuries', 'yes')} />
+                onClick={() => set('has_injuries', 'yes')}
+              />
             </div>
             {state.has_injuries === 'yes' && (
               <div className="mt-4 space-y-1">
-                <Label className="text-sm">Beskriv kort</Label>
+                <Label className="text-sm">{t('onboarding.injuryDescribeLabel')}</Label>
                 <Textarea value={state.injury_text} onChange={e => set('injury_text', e.target.value)}
-                  placeholder="t.ex. diskbråck L4-L5, undviker tunga marklyft" className="rounded-lg" rows={3} />
+                  placeholder={t('onboarding.injuryPlaceholder')} className="rounded-lg" rows={3} />
               </div>
             )}
           </StepContainer>
@@ -612,12 +447,16 @@ export default function Onboarding() {
 
       case 'str_days':
         return (
-          <StepContainer title="Hur ofta vill du träna?">
+          <StepContainer title={t('onboarding.strDaysTitle')}>
             <div className="space-y-3">
               {[3, 4, 5, 6].map(d => (
-                <OptionCard key={d} title={`${d} dagar/vecka`}
+                <OptionCard
+                  key={d}
+                  dataTestId={onboardingTestId.strengthDays(d)}
+                  title={t('onboarding.strDaysOption', { count: d })}
                   selected={state.strength_days === d}
-                  onClick={() => { set('strength_days', d); setTimeout(goNext, 200); }} />
+                  onClick={() => { set('strength_days', d); setTimeout(goNext, 200); }}
+                />
               ))}
             </div>
           </StepContainer>
@@ -626,31 +465,31 @@ export default function Onboarding() {
       // WEIGHT LOSS
       case 'wl_weight':
         return (
-          <StepContainer title="Ungefär vad väger du idag?">
+          <StepContainer title={t('onboarding.wlWeightTitle')}>
             <div className="space-y-2">
               <div className="relative">
                 <Input type="number" value={state.weight} onChange={e => set('weight', e.target.value)}
                   placeholder="80" className="h-[52px] text-lg rounded-lg pr-12" autoFocus />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">kg</span>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">{t('onboarding.kg')}</span>
               </div>
-              <p className="text-sm text-muted-foreground">Du behöver inte svara exakt</p>
+              <p className="text-sm text-muted-foreground">{t('onboarding.wlWeightHint')}</p>
             </div>
           </StepContainer>
         );
 
       case 'wl_target':
         return (
-          <StepContainer title="Vad är din målvikt?">
+          <StepContainer title={t('onboarding.wlTargetTitle')}>
             <div className="space-y-3">
               <div className="relative">
                 <Input type="number" value={state.target_weight} onChange={e => set('target_weight', e.target.value)}
                   placeholder={state.weight ? String(Math.round(Number(state.weight) * 0.9)) : '72'}
                   className="h-[52px] text-lg rounded-lg pr-12" />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">kg</span>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">{t('onboarding.kg')}</span>
               </div>
               <button onClick={() => { set('target_weight', ''); goNext(); }}
                 className="w-full rounded-xl border border-border bg-card p-4 text-center text-sm text-muted-foreground hover:border-primary/40 transition-colors">
-                Vet inte än
+                {t('onboarding.wlTargetUnknown')}
               </button>
             </div>
           </StepContainer>
@@ -658,16 +497,17 @@ export default function Onboarding() {
 
       case 'wl_activity':
         return (
-          <StepContainer title="Tränar du idag?">
+          <StepContainer title={t('onboarding.wlActivityTitle')}>
             <div className="space-y-3">
-              {[
-                { key: 'regular', emoji: '💪', label: 'Ja, regelbundet' },
-                { key: 'sometimes', emoji: '🚶', label: 'Lite, ibland' },
-                { key: 'none', emoji: '❌', label: 'Nej, vill börja' },
-              ].map(opt => (
-                <OptionCard key={opt.key} emoji={opt.emoji} title={opt.label}
+              {WL_ACTIVITY_OPTIONS.map(opt => (
+                <OptionCard
+                  key={opt.key}
+                  dataTestId={onboardingTestId.wlActivity(opt.key)}
+                  emoji={opt.emoji}
+                  title={t(`onboarding.wlActivity.${opt.key}.label`)}
                   selected={state.wl_activity === opt.key}
-                  onClick={() => { set('wl_activity', opt.key); setTimeout(goNext, 200); }} />
+                  onClick={() => { set('wl_activity', opt.key); setTimeout(goNext, 200); }}
+                />
               ))}
             </div>
           </StepContainer>
@@ -676,23 +516,24 @@ export default function Onboarding() {
       // WELLNESS
       case 'well_focus':
         return (
-          <StepContainer title="Vad vill du fokusera på?" subtitle="Välj 1–3 alternativ">
+          <StepContainer title={t('onboarding.wellFocusTitle')} subtitle={t('onboarding.wellFocusSubtitle')}>
             <div className="space-y-3">
-              {[
-                { key: 'rörelse', emoji: '🏃', label: 'Mer rörelse' },
-                { key: 'kost', emoji: '🍎', label: 'Bättre kost' },
-                { key: 'sömn', emoji: '😴', label: 'Bättre sömn' },
-                { key: 'stress', emoji: '🧘', label: 'Mindre stress' },
-              ].map(opt => {
+              {WELLNESS_FOCUS_OPTIONS.map(opt => {
                 const sel = state.wellness_focuses.includes(opt.key);
                 return (
-                  <OptionCard key={opt.key} emoji={opt.emoji} title={opt.label} selected={sel}
+                  <OptionCard
+                    key={opt.key}
+                    dataTestId={onboardingTestId.wellnessFocus(opt.key)}
+                    emoji={opt.emoji}
+                    title={t(`onboarding.wellFocus.${opt.key}.label`)}
+                    selected={sel}
                     onClick={() => {
                       const next = sel
                         ? state.wellness_focuses.filter(f => f !== opt.key)
                         : [...state.wellness_focuses, opt.key].slice(0, 3);
                       set('wellness_focuses', next);
-                    }} />
+                    }}
+                  />
                 );
               })}
             </div>
@@ -701,16 +542,16 @@ export default function Onboarding() {
 
       case 'well_activity':
         return (
-          <StepContainer title="Hur aktiv är du idag?">
+          <StepContainer title={t('onboarding.wellActivityTitle')}>
             <div className="space-y-3">
-              {[
-                { key: 'sedentary', label: 'Stillasittande' },
-                { key: 'light', label: 'Lite aktiv' },
-                { key: 'active', label: 'Aktiv' },
-              ].map(opt => (
-                <OptionCard key={opt.key} title={opt.label}
+              {WELLNESS_ACTIVITY_OPTIONS.map(opt => (
+                <OptionCard
+                  key={opt.key}
+                  dataTestId={onboardingTestId.wellnessActivity(opt.key)}
+                  title={t(`onboarding.wellActivity.${opt.key}.label`)}
                   selected={state.wellness_activity === opt.key}
-                  onClick={() => { set('wellness_activity', opt.key); setTimeout(goNext, 200); }} />
+                  onClick={() => { set('wellness_activity', opt.key); setTimeout(goNext, 200); }}
+                />
               ))}
             </div>
           </StepContainer>
@@ -719,26 +560,26 @@ export default function Onboarding() {
       // CUSTOM
       case 'cust_describe':
         return (
-          <StepContainer title="Beskriv ditt mål">
+          <StepContainer title={t('onboarding.customDescribeTitle')}>
             <Textarea value={state.custom_goal} onChange={e => set('custom_goal', e.target.value)}
-              placeholder="T.ex. 'Jag vill kunna springa 5 km utan att stanna' eller 'Förbereda mig för en fjällvandring i sommar'"
+              placeholder={t('onboarding.customDescribePlaceholder')}
               className="rounded-lg min-h-[120px] text-base" autoFocus />
           </StepContainer>
         );
 
       case 'cust_map':
         return (
-          <StepContainer title="Mitt mål liknar mest...">
+          <StepContainer title={t('onboarding.customMapTitle')}>
             <div className="space-y-3">
-              {[
-                { key: 'endurance', emoji: '🏃', label: 'Uthållighet / Kondition' },
-                { key: 'strength', emoji: '💪', label: 'Styrka / Muskler' },
-                { key: 'weight_loss', emoji: '🎯', label: 'Viktnedgång' },
-                { key: 'wellness', emoji: '🌿', label: 'Allmän hälsa' },
-              ].map(opt => (
-                <OptionCard key={opt.key} emoji={opt.emoji} title={opt.label}
+              {CUSTOM_MAP_OPTIONS.map(opt => (
+                <OptionCard
+                  key={opt.key}
+                  dataTestId={onboardingTestId.customMap(opt.key)}
+                  emoji={opt.emoji}
+                  title={t(`onboarding.customMap.${opt.key}.label`)}
                   selected={state.custom_archetype === opt.key}
-                  onClick={() => { set('custom_archetype', opt.key); setTimeout(goNext, 200); }} />
+                  onClick={() => { set('custom_archetype', opt.key); setTimeout(goNext, 200); }}
+                />
               ))}
             </div>
           </StepContainer>
@@ -746,12 +587,17 @@ export default function Onboarding() {
 
       case 'cust_date':
         return (
-          <StepContainer title="När vill du nå ditt mål?">
+          <StepContainer title={t('onboarding.customDateTitle')}>
             <div className="space-y-3">
-              <DatePickerField date={state.custom_date} onSelect={d => set('custom_date', d)} />
+              <DatePickerField
+                date={state.custom_date}
+                onSelect={d => set('custom_date', d)}
+                locale={dateLocale}
+                emptyLabel={t('onboarding.pickDate')}
+              />
               <button onClick={() => { set('custom_no_date', true); goNext(); }}
                 className="w-full rounded-xl border border-border bg-card p-4 text-center text-sm text-muted-foreground hover:border-primary/40 transition-colors">
-                Inget specifikt datum
+                {t('onboarding.customDateSkip')}
               </button>
             </div>
           </StepContainer>
@@ -761,16 +607,26 @@ export default function Onboarding() {
       case 'summary': {
         const summary = getSummary();
         return (
-          <StepContainer title={`Redo att börja, ${state.display_name}! 🚀`}>
+          <StepContainer title={t('onboarding.summaryReady', { name: state.display_name })}>
             <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-              <SummaryRow label="Mål" value={summary.goal || '–'} />
-              <SummaryRow label="Datum" value={summary.date ? new Date(summary.date).toLocaleDateString('sv-SE') : 'Inget specifikt datum'} />
-              <SummaryRow label="Typ" value={summary.type} />
-              <SummaryRow label="Träningsdagar" value={`${summary.days} per vecka`} />
+              <SummaryRow label={t('onboarding.summaryGoal')} value={summary.goal || '–'} />
+              <SummaryRow
+                label={t('onboarding.summaryDate')}
+                value={
+                  summary.date
+                    ? new Date(summary.date).toLocaleDateString(dateLocaleStr)
+                    : t('onboarding.summaryNoDate')
+                }
+              />
+              <SummaryRow label={t('onboarding.summaryType')} value={summary.type} />
+              <SummaryRow
+                label={t('onboarding.summaryDays')}
+                value={t('onboarding.summaryDaysValue', { count: summary.days })}
+              />
             </div>
-            <Button onClick={handleFinish} disabled={saving}
+            <Button onClick={goNext} disabled={saving}
               className="w-full h-[52px] text-base font-semibold rounded-lg mt-4">
-              {saving ? 'Sparar...' : 'Starta min resa →'}
+              {t('onboarding.next')}
             </Button>
           </StepContainer>
         );
@@ -779,14 +635,14 @@ export default function Onboarding() {
       case 'trail_name':
         return (
           <StepContainer
-            title="Välj ditt Trail Name"
-            subtitle="Ett unikt namn som följer dig på din resa"
+            title={t('onboarding.trailTitle')}
+            subtitle={t('onboarding.trailSubtitle')}
           >
             <div className="space-y-4">
               <Input
                 value={state.trail_name}
                 onChange={e => set('trail_name', e.target.value.slice(0, 30))}
-                placeholder="t.ex. Mountain Fox, Iron Viking, Storm Runner"
+                placeholder={t('onboarding.trailPlaceholder')}
                 maxLength={30}
                 className="h-[52px] text-base rounded-lg"
               />
@@ -796,7 +652,7 @@ export default function Onboarding() {
                   disabled={saving}
                   className="w-full h-[52px] text-base font-semibold rounded-[10px] bg-[#5095AC] hover:bg-[#468298]"
                 >
-                  {saving ? 'Sparar...' : 'Fortsätt'}
+                  {saving ? t('onboarding.saving') : t('onboarding.continueCta')}
                 </Button>
                 <button
                   type="button"
@@ -804,7 +660,7 @@ export default function Onboarding() {
                   className="text-xs text-[#8E9BA3] hover:text-[#6B7B84] underline-offset-2 hover:underline mx-auto"
                   style={{ fontFamily: "'Merriweather Sans', sans-serif" }}
                 >
-                  Hoppa över
+                  {t('onboarding.skipTrail')}
                 </button>
               </div>
             </div>
@@ -828,7 +684,7 @@ export default function Onboarding() {
       <div className="px-4 pt-3">
         {step > 0 && (
           <button onClick={goBack} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors touch-target">
-            <ArrowLeft className="h-4 w-4" /> Tillbaka
+            <ArrowLeft className="h-4 w-4" /> {t('onboarding.back')}
           </button>
         )}
       </div>
@@ -849,7 +705,7 @@ export default function Onboarding() {
           <div className="mx-auto max-w-[480px]">
             <Button onClick={goNext} disabled={!canProceed()}
               className="w-full h-[52px] text-base font-semibold rounded-lg">
-              Nästa →
+              {t('onboarding.next')}
             </Button>
           </div>
         </div>
@@ -872,11 +728,16 @@ function StepContainer({ title, subtitle, children }: { title: string; subtitle?
   );
 }
 
-function OptionCard({ emoji, title, description, selected, onClick }: {
-  emoji?: string; title: string; description?: string; selected: boolean; onClick: () => void;
+function OptionCard({ emoji, title, description, selected, onClick, dataTestId }: {
+  emoji?: string;
+  title: string;
+  description?: string;
+  selected: boolean;
+  onClick: () => void;
+  dataTestId?: string;
 }) {
   return (
-    <button onClick={onClick}
+    <button type="button" data-testid={dataTestId} onClick={onClick}
       className={cn(
         "w-full flex items-center gap-4 rounded-xl border p-4 text-left transition-all duration-200 touch-target",
         selected
@@ -901,14 +762,24 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DatePickerField({ date, onSelect }: { date: Date | undefined; onSelect: (d: Date | undefined) => void }) {
+function DatePickerField({
+  date,
+  onSelect,
+  locale,
+  emptyLabel,
+}: {
+  date: Date | undefined;
+  onSelect: (d: Date | undefined) => void;
+  locale: Locale;
+  emptyLabel: string;
+}) {
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="outline" className={cn("w-full h-[52px] justify-start text-left font-normal rounded-lg",
           !date && "text-muted-foreground")}>
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, 'PPP', { locale: sv }) : 'Välj datum'}
+          {date ? format(date, 'PPP', { locale }) : emptyLabel}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">

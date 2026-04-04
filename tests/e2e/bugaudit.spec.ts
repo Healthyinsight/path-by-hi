@@ -38,6 +38,7 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { generateProfileWeeklySchedule } from '../../src/lib/scheduleEngine';
+import { loginAsTestUser } from './loginTestUser';
 
 const SUPABASE_URL = 'https://sbfkoeozczzgyvakxozh.supabase.co';
 const SUPABASE_ANON_KEY =
@@ -90,63 +91,6 @@ async function seedNext4WeeksSchedule(supabase: any, userId: string, profile: an
   if (error) throw error;
 }
 
-const SUPABASE_AUTH_STORAGE_KEY = 'sb-sbfkoeozczzgyvakxozh-auth-token';
-/** Same as `LOCALE_STORAGE_KEY` in src/i18n/config.ts */
-const PATH_TRACKER_LOCALE_KEY = 'pathTracker.locale';
-
-async function loginAsTestUser(
-  page: import('@playwright/test').Page,
-  opts?: { startPath?: string }
-) {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: 'test@pathtracker.dev',
-    password: 'TestUser2026!',
-  });
-  if (error || !data.session) {
-    throw new Error(`E2E login failed: ${error?.message ?? 'no session'}`);
-  }
-  const sessionStr = JSON.stringify(data.session);
-  const storageTuple = [SUPABASE_AUTH_STORAGE_KEY, sessionStr, PATH_TRACKER_LOCALE_KEY] as [
-    string,
-    string,
-    string,
-  ];
-
-  await page.addInitScript(
-    ([authKey, json, localeKey]: [string, string, string]) => {
-      window.localStorage.setItem(authKey, json);
-      window.localStorage.setItem(localeKey, 'sv');
-    },
-    storageTuple
-  );
-
-  const startPath = opts?.startPath ?? '/';
-  await page.goto(startPath, { waitUntil: 'domcontentloaded' });
-
-  async function injectSessionAndMaybeReload() {
-    await page.evaluate(
-      ([authKey, json, localeKey]: [string, string, string]) => {
-        window.localStorage.setItem(authKey, json);
-        window.localStorage.setItem(localeKey, 'sv');
-      },
-      storageTuple
-    );
-    await page.reload({ waitUntil: 'domcontentloaded' });
-  }
-
-  if (!(await page.locator('.app-container').first().isVisible().catch(() => false))) {
-    await injectSessionAndMaybeReload();
-  }
-
-  await page.waitForTimeout(800);
-  await expect(page).not.toHaveURL(/\/(login|onboarding)/, {
-    timeout: 20000,
-  });
-  // Main app pages use .app-container; Login/Onboarding do not.
-  await expect(page.locator('.app-container').first()).toBeVisible({ timeout: 20000 });
-}
-
 function mondayOfCurrentWeek(): Date {
   const today = new Date();
   const day = today.getDay();
@@ -171,6 +115,7 @@ async function restoreIronBaseline(supabase: any) {
       archetype: 'IRONMAN',
       disciplines: ['swim', 'bike', 'run'],
       goal_date: goalDate,
+      goal_name: 'Ironman seed',
       onboarding_completed: true,
       trail_name: null,
       display_name: 'TestUser',
@@ -179,6 +124,20 @@ async function restoreIronBaseline(supabase: any) {
   );
   if (error) {
     throw new Error(`restoreIronBaseline failed: ${error.message}`);
+  }
+  // Settings save upserts both user_profiles and user_goals; seed goals so UPDATE path is used (matches prod users who completed onboarding).
+  const { error: goalsError } = await supabase.from('user_goals').upsert(
+    {
+      user_id: testUserId,
+      goal_name: 'Ironman seed',
+      goal_date: goalDate,
+      goal_emoji: '🏊',
+      disciplines: ['swim', 'bike', 'run'],
+    },
+    { onConflict: 'user_id' }
+  );
+  if (goalsError) {
+    throw new Error(`restoreIronBaseline user_goals failed: ${goalsError.message}`);
   }
 }
 
@@ -361,23 +320,42 @@ test.describe('Bug audit – Settings / profil', () => {
 
     const unique = `E2E mål ${Date.now()}`;
     await page.goto('/settings');
-    const goalCard = page.locator('.card-athletic').filter({ hasText: 'Mitt mål' }).first();
-    await goalCard.getByPlaceholder(/Ironman/i).fill(unique);
+    // Goal card is titled "Mitt mål" (settings.myGoal). The profile summary can also contain the
+    // substring "Mitt mål" as a *value* in an earlier card — use .last() so we target the edit card.
+    // Prefer stable test id when the deployed build includes it.
+    const byTestId = page.getByTestId('settings-goal-name-input');
+    if (await byTestId.count()) {
+      await byTestId.fill(unique);
+    } else {
+      await page
+        .locator('.card-athletic')
+        .filter({ has: page.getByText('Mitt mål', { exact: true }) })
+        .last()
+        .getByRole('textbox')
+        .first()
+        .fill(unique);
+    }
     await page.getByRole('button', { name: /Spara inställningar/i }).click();
     await expect(page.getByText('Inställningar sparade!', { exact: false })).toBeVisible({ timeout: 20000 });
 
     let goalsMatch = false;
     let profilesMatch = false;
-    for (let i = 0; i < 12; i++) {
-      const { data: g } = await supabase.from('user_goals').select('goal_name').eq('user_id', testUserId).maybeSingle();
-      const { data: p } = await supabase.from('user_profiles').select('goal_name').eq('user_id', testUserId).maybeSingle();
-      goalsMatch = g?.goal_name === unique;
-      profilesMatch = p?.goal_name === unique;
+    let lastG: string | null | undefined;
+    let lastP: string | null | undefined;
+    for (let i = 0; i < 24; i++) {
+      const { data: g, error: ge } = await supabase.from('user_goals').select('goal_name').eq('user_id', testUserId).maybeSingle();
+      const { data: p, error: pe } = await supabase.from('user_profiles').select('goal_name').eq('user_id', testUserId).maybeSingle();
+      if (ge) throw ge;
+      if (pe) throw pe;
+      lastG = g?.goal_name;
+      lastP = p?.goal_name;
+      goalsMatch = (g?.goal_name ?? '').trim() === unique.trim();
+      profilesMatch = (p?.goal_name ?? '').trim() === unique.trim();
       if (goalsMatch && profilesMatch) break;
-      await page.waitForTimeout(600);
+      await page.waitForTimeout(500);
     }
-    expect(goalsMatch).toBe(true);
-    expect(profilesMatch).toBe(true);
+    expect(goalsMatch, `user_goals.goal_name last=${JSON.stringify(lastG)} expected=${JSON.stringify(unique)}`).toBe(true);
+    expect(profilesMatch, `user_profiles.goal_name last=${JSON.stringify(lastP)} expected=${JSON.stringify(unique)}`).toBe(true);
   });
 
   test('Spara inställningar persists name to users AND display_name in user_profiles', async ({ page }) => {
@@ -450,62 +428,43 @@ test.describe('Bug audit – Retake quiz & onboarding DB', () => {
     'after strength onboarding, user_profiles reflects archetype, disciplines, trail_name',
     async ({ page }) => {
       // SKIP: strength-onboardingflödet har ändrats i P28/P30, uppdateras i P32.
-    const supabase = await getFreshSupabase();
-    if (!testUserId) throw new Error('Missing testUserId');
+      const supabase = await getFreshSupabase();
+      if (!testUserId) throw new Error('Missing testUserId');
 
-    const trail = `StyrkeDB_${Date.now()}`;
-    await supabase.from('user_profiles').upsert(
-      {
-        user_id: testUserId,
-        onboarding_completed: false,
-        archetype: 'triathlon',
-        disciplines: ['swim', 'bike', 'run'],
-        goal_date: new Date(Date.now() + 86400000 * 180).toISOString().split('T')[0],
-      },
-      { onConflict: 'user_id' }
-    );
+      const trail = `StyrkeDB_${Date.now()}`;
+      await supabase.from('user_profiles').upsert(
+        {
+          user_id: testUserId,
+          onboarding_completed: false,
+          archetype: 'triathlon',
+          disciplines: ['swim', 'bike', 'run'],
+          goal_date: new Date(Date.now() + 86400000 * 180).toISOString().split('T')[0],
+        },
+        { onConflict: 'user_id' }
+      );
 
       await loginAsTestUser(page);
       await page.goto('/onboarding');
       await page.getByPlaceholder('Ditt förnamn').fill('AuditUser');
       await page.getByRole('button', { name: /Nästa/i }).click();
       await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
-      await page.getByText('Bli starkare', { exact: false }).click();
+      await page.getByTestId('onboarding-goal-strength').click();
+      await expect(page.getByTestId('onboarding-strength-equipment-full_gym')).toBeVisible({ timeout: 20000 });
+      await page.getByTestId('onboarding-strength-equipment-full_gym').click();
+      await expect(page.getByText('Har du några skador', { exact: false })).toBeVisible();
+      await page.getByTestId('onboarding-strength-injury-no').click();
+      await expect(page.getByText('Hur ofta vill du träna?', { exact: false })).toBeVisible();
+      await page.getByTestId('onboarding-strength-days-3').click();
 
-      // Debug: capture what the equipment step actually looks like for strength onboarding.
-      await page.waitForTimeout(2000);
-      await page.screenshot({
-        path: 'test-results/debug-strength-equipment-bugaudit.png',
-        fullPage: true,
-      });
-
-      const equipmentStepTitle = page.getByText('Vad har du tillgång till?', { exact: false });
-      if (await equipmentStepTitle.isVisible().catch(() => false)) {
-        const equipmentOption = page
-          .getByRole('button', {
-            name: /Fullt gym|Hemmagym|kroppsvikt|utrustning/i,
-          })
-          .first();
-        await expect(equipmentOption).toBeVisible({ timeout: 20000 });
-        await equipmentOption.click();
-      }
-    await expect(page.getByText('Har du några skador', { exact: false })).toBeVisible();
-    await page.getByText('Nej, allt är bra', { exact: false }).click();
-    await expect(page.getByText('Hur ofta vill du träna?', { exact: false })).toBeVisible();
-    await page.getByText('3 dagar/vecka', { exact: false }).click();
-
-    const trailTitle = page.getByText('Välj ditt Trail Name', { exact: false });
-    const summaryStart = page.getByRole('button', { name: /Starta min resa/i });
-    if (await trailTitle.isVisible().catch(() => false)) {
-      await page.getByRole('textbox').fill(trail);
+      await expect(page.getByText(/Redo att börja/i)).toBeVisible({ timeout: 20000 });
+      await page.getByRole('button', { name: /Nästa/i }).click();
+      await expect(page.getByText('Välj ditt Trail Name', { exact: false })).toBeVisible({ timeout: 15000 });
+      await page.locator('input[maxlength="30"]').fill(trail);
       await page.getByRole('button', { name: /Fortsätt/i }).click();
-    } else {
-      await summaryStart.click();
-    }
 
-    await expect(
-      page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
-    ).toBeVisible({ timeout: 30000 });
+      await expect(
+        page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+      ).toBeVisible({ timeout: 30000 });
 
       let p: {
         archetype?: string;
@@ -578,36 +537,19 @@ test.describe('Bug audit – Retake quiz & onboarding DB', () => {
 
       await page.getByPlaceholder('Ditt förnamn').fill('RetakeUser');
       await page.getByRole('button', { name: /Nästa/i }).click();
-      await page.getByText('Bli starkare', { exact: false }).click();
+      await page.getByTestId('onboarding-goal-strength').click();
+      await expect(page.getByTestId('onboarding-strength-equipment-full_gym')).toBeVisible({ timeout: 20000 });
+      await page.getByTestId('onboarding-strength-equipment-full_gym').click();
+      await expect(page.getByText('Har du några skador', { exact: false })).toBeVisible();
+      await page.getByTestId('onboarding-strength-injury-no').click();
+      await expect(page.getByText('Hur ofta vill du träna?', { exact: false })).toBeVisible();
+      await page.getByTestId('onboarding-strength-days-4').click();
 
-      // Debug: capture what the equipment step actually looks like for strength retake quiz.
-      await page.waitForTimeout(2000);
-      await page.screenshot({
-        path: 'test-results/debug-strength-equipment-retake-bugaudit.png',
-        fullPage: true,
-      });
-
-      const equipmentStepTitle = page.getByText('Vad har du tillgång till?', { exact: false });
-      if (await equipmentStepTitle.isVisible().catch(() => false)) {
-        const equipmentOption = page
-          .getByRole('button', {
-            name: /Fullt gym|Hemmagym|kroppsvikt|utrustning/i,
-          })
-          .first();
-        await expect(equipmentOption).toBeVisible({ timeout: 20000 });
-        await equipmentOption.click();
-      }
-      await page.getByText('Nej, allt är bra', { exact: false }).click();
-      await page.getByText('4 dagar/vecka', { exact: false }).click();
-
-      const trailTitle = page.getByText('Välj ditt Trail Name', { exact: false });
-      const summaryStart = page.getByRole('button', { name: /Starta min resa/i });
-      if (await trailTitle.isVisible().catch(() => false)) {
-        await page.getByRole('textbox').fill(newTrail);
-        await page.getByRole('button', { name: /Fortsätt/i }).click();
-      } else {
-        await summaryStart.click();
-      }
+      await expect(page.getByText(/Redo att börja/i)).toBeVisible({ timeout: 20000 });
+      await page.getByRole('button', { name: /Nästa/i }).click();
+      await expect(page.getByText('Välj ditt Trail Name', { exact: false })).toBeVisible({ timeout: 15000 });
+      await page.locator('input[maxlength="30"]').fill(newTrail);
+      await page.getByRole('button', { name: /Fortsätt/i }).click();
 
       await expect(
         page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
@@ -620,7 +562,6 @@ test.describe('Bug audit – Retake quiz & onboarding DB', () => {
         .maybeSingle();
       expect(prof?.trail_name).toBe(newTrail);
       // Strength-onboarding mappar internt till RECOMP i schemamotorn.
-      // Vi verifierar därför det interna archetype-värdet istället för råinputen "strength".
       expect(prof?.archetype).toBe('RECOMP');
       expect((prof?.disciplines as string[]) ?? []).toContain('strength');
 

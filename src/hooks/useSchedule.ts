@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PostgrestError } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,7 +21,9 @@ export type RegenerateProfileInput = {
 };
 
 export function useSchedule() {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  const scheduleLang = i18n.language.startsWith('en') ? 'en' : 'sv';
   const today = useMemo(() => fmtDate(new Date()), []);
   const [schedule, setSchedule] = useState<ScheduleRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +49,7 @@ export function useSchedule() {
   const regenerate = useCallback(
     async (profileInput: RegenerateProfileInput): Promise<boolean> => {
       if (!user?.id) {
-        toast.error('Inte inloggad.');
+        toast.error(t('common.notSignedIn'));
         return false;
       }
 
@@ -63,6 +66,7 @@ export function useSchedule() {
             goal_date: profileInput.goal_date,
           },
           start,
+          scheduleLang,
         );
         for (const e of rows) {
           const planned_type =
@@ -79,27 +83,27 @@ export function useSchedule() {
 
       const { error: insErr } = await upsertSchedule(user.id, allEntries);
       if (insErr) {
-        toast.error('Kunde inte generera schema');
+        toast.error(t('schedule.toastGenerateFail'));
         return false;
       }
-      toast.success('4-veckors schema genererat! 🎉');
+      toast.success(t('schedule.seedSuccess'));
       await refetch();
       return true;
     },
-    [user?.id, refetch],
+    [user?.id, refetch, t, scheduleLang],
   );
 
   const markWorkoutCompleted = useCallback(
     async (workoutId: string): Promise<boolean> => {
       const { error: e } = await updateScheduleRow(workoutId, { completed: true });
       if (e) {
-        toast.error('Kunde inte uppdatera');
+        toast.error(t('schedule.toastUpdateFail'));
         return false;
       }
       await refetch();
       return true;
     },
-    [refetch],
+    [refetch, t],
   );
 
   return {

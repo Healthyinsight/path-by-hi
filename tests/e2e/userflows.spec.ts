@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import { generateProfileWeeklySchedule } from '../../src/lib/scheduleEngine';
+import { loginAsTestUser } from './loginTestUser';
 
 // NOTE:
 // These flows assume either a dedicated test environment or a mocked auth/login helper.
@@ -56,60 +57,6 @@ async function seedNext4WeeksSchedule(supabase: any, userId: string, profile: an
   if (error) throw error;
 }
 
-const SUPABASE_AUTH_STORAGE_KEY = 'sb-sbfkoeozczzgyvakxozh-auth-token';
-/** Same as `LOCALE_STORAGE_KEY` in src/i18n/config.ts */
-const PATH_TRACKER_LOCALE_KEY = 'pathTracker.locale';
-
-async function loginAsTestUser(page: any, opts?: { startPath?: string }) {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: 'test@pathtracker.dev',
-    password: 'TestUser2026!',
-  });
-  if (error || !data.session) {
-    throw new Error(`E2E login failed: ${error?.message ?? 'no session'}`);
-  }
-
-  const sessionStr = JSON.stringify(data.session);
-  const storageTuple = [SUPABASE_AUTH_STORAGE_KEY, sessionStr, PATH_TRACKER_LOCALE_KEY] as [
-    string,
-    string,
-    string,
-  ];
-
-  await page.addInitScript(
-    ([authKey, json, localeKey]: [string, string, string]) => {
-      window.localStorage.setItem(authKey, json);
-      window.localStorage.setItem(localeKey, 'sv');
-    },
-    storageTuple
-  );
-
-  const startPath = opts?.startPath ?? '/';
-  await page.goto(startPath, { waitUntil: 'domcontentloaded' });
-
-  async function injectSessionAndMaybeReload() {
-    await page.evaluate(
-      ([authKey, json, localeKey]: [string, string, string]) => {
-        window.localStorage.setItem(authKey, json);
-        window.localStorage.setItem(localeKey, 'sv');
-      },
-      storageTuple
-    );
-    await page.reload({ waitUntil: 'domcontentloaded' });
-  }
-
-  if (!(await page.locator('.app-container').first().isVisible().catch(() => false))) {
-    await injectSessionAndMaybeReload();
-  }
-
-  await page.waitForTimeout(800);
-  await expect(page).not.toHaveURL(/\/(login|onboarding)/, {
-    timeout: 20000,
-  });
-  await expect(page.locator('.app-container').first()).toBeVisible({ timeout: 20000 });
-}
-
 test.beforeAll(async () => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   supabaseAuthed = supabase;
@@ -141,136 +88,70 @@ test.beforeAll(async () => {
 });
 
 test.describe('Onboarding – triathlon user', () => {
-  test.skip(
-    'should complete triathlon onboarding flow',
-    async ({ page }) => {
-      // SKIP: triathlon-onboardingflödet har ändrats i P28/P30, uppdateras i P32.
-      await loginAsTestUser(page);
-      await page.goto('/onboarding');
-      // Name step
-      await page.getByPlaceholder('Ditt förnamn').fill('TestUser');
-      await page.getByRole('button', { name: /Nästa/i }).click();
-      // Archetype: Triathlon
-      await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
-      await page.getByText('Triathlon / Ironman', { exact: false }).click();
+  test('should complete triathlon onboarding flow', async ({ page }) => {
+    await loginAsTestUser(page);
+    await page.goto('/onboarding');
+    await page.getByPlaceholder('Ditt förnamn').fill('TestUser');
+    await page.getByRole('button', { name: /Nästa/i }).click();
+    await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
+    await page.getByTestId('onboarding-goal-triathlon').click();
 
-      // Tri distance – välj halvdistans om distans-steget visas.
-      // I vissa flöden kan distanssteget hoppas över beroende på tidigare data.
-      const triDistanceTitle = page.getByText('Vilken distans?', { exact: false });
-      if (await triDistanceTitle.isVisible().catch(() => false)) {
-        const halfDistanceButton = page.getByRole('button', { name: /70\.3|Halv|halvdistans/i });
-        await expect(halfDistanceButton).toBeVisible({ timeout: 15000 });
-        await halfDistanceButton.click();
-      }
+    await expect(page.getByTestId('onboarding-tri-distance-half')).toBeVisible({ timeout: 15000 });
+    await page.getByTestId('onboarding-tri-distance-half').click();
 
-      // Debug: snapshot precis före race-steget för att se faktisk rubrik/text.
-      await page.waitForTimeout(1000);
-      await page.screenshot({
-        path: 'test-results/debug-tri-step4.png',
-        fullPage: true,
-      });
+    await expect(page.getByText('Har du ett race inbokat?')).toBeVisible();
+    await page.getByTestId('onboarding-tri-race-yes').click();
 
-      // Race step – rubriken kan ha ändrats, matcha bredare på race/lopp/inbokat.
-      const raceHeading = page
-        .getByRole('heading')
-        .filter({ hasText: /race|lopp|inbokat/i })
-        .first();
-      await expect(raceHeading).toBeVisible({ timeout: 15000 });
-      await page.getByRole('button', { name: 'Ja Jag har ett specifikt lopp' }).click();
+    const search = page.getByPlaceholder('Sök bland populära lopp eller skriv eget...');
+    await search.fill('Göteborg');
 
-      const search = page.getByPlaceholder('Sök bland populära lopp eller skriv eget...');
-      await search.fill('Göteborg');
+    const suggestion = page.getByRole('listitem').filter({ hasText: 'Göteborgsvarvet' }).first();
+    await expect(suggestion).toBeVisible({ timeout: 15000 });
+    await suggestion.click();
 
-      const suggestion = page.getByRole('listitem').filter({ hasText: 'Göteborgsvarvet' }).first();
-      await expect(suggestion).toBeVisible({ timeout: 15000 });
-      await suggestion.click();
+    await expect(page.getByText('Hur är din nuvarande form?', { exact: false })).toBeVisible();
+    await page.getByTestId('onboarding-tri-level-beginner').click();
 
-      // Confirm that race name + formatted date are shown
-      await expect(page.getByText('Göteborgsvarvet', { exact: false })).toBeVisible();
+    await expect(page.getByText(/Redo att börja/i)).toBeVisible({ timeout: 15000 });
+    await page.getByRole('button', { name: /Nästa/i }).click();
+    await expect(page.getByText('Välj ditt Trail Name', { exact: false })).toBeVisible({ timeout: 15000 });
+    await page.locator('input[maxlength="30"]').fill('Test Trail');
+    await page.getByRole('button', { name: /Fortsätt/i }).click();
 
-      // Continue through the remaining triathlon-specific steps until trail name
-      await expect(page.getByText('Hur är din nuvarande form?', { exact: false })).toBeVisible();
-      await page.getByText('Nybörjare', { exact: false }).click();
-
-      // Timing can vary (summary vs trail name). Handle both.
-      const trailTitle = page.getByText('Välj ditt Trail Name', { exact: false });
-      const summaryStart = page.getByRole('button', { name: /Starta min resa/i });
-
-      if (await trailTitle.isVisible().catch(() => false)) {
-        await page.getByRole('textbox').fill('Test Trail');
-        await page.getByRole('button', { name: /Fortsätt/i }).click();
-      } else {
-        await summaryStart.click();
-      }
-
-      // User should land on TodayView (exact/role — avoid matching unrelated copy e.g. "… dagens pass")
-      await expect(
-        page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
-      ).toBeVisible({ timeout: 15000 });
-    }
-  );
+    await expect(
+      page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+    ).toBeVisible({ timeout: 15000 });
+  });
 });
 
 test.describe('Onboarding – strength user', () => {
-  test.skip(
-    'should complete strength onboarding flow',
-    async ({ page }) => {
-      // SKIP: strength-onboardingflödet har ändrats i P28/P30, uppdateras i P32.
-      await loginAsTestUser(page);
-      await page.goto('/onboarding');
-      await page.getByPlaceholder('Ditt förnamn').fill('TestUser');
-      await page.getByRole('button', { name: /Nästa/i }).click();
-      await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
-      await page.getByText('Bli starkare', { exact: false }).click();
+  test('should complete strength onboarding flow', async ({ page }) => {
+    await loginAsTestUser(page);
+    await page.goto('/onboarding');
+    await page.getByPlaceholder('Ditt förnamn').fill('TestUser');
+    await page.getByRole('button', { name: /Nästa/i }).click();
+    await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
+    await page.getByTestId('onboarding-goal-strength').click();
 
-      // Equipment step – klicka på ett gym-alternativ om steget visas.
-      // I vissa flöden kan equipment-steget hoppas över för strength-användare.
-      const equipmentTitle = page.getByText('Vad har du tillgång till?', { exact: false });
-      if (await equipmentTitle.isVisible().catch(() => false)) {
-        // Debug: snapshot direkt efter att equipment-steget visas.
-        await page.waitForTimeout(1000);
-        await page.screenshot({
-          path: 'test-results/debug-strength-equipment-userflows.png',
-          fullPage: true,
-        });
+    await expect(page.getByTestId('onboarding-strength-equipment-full_gym')).toBeVisible({ timeout: 15000 });
+    await page.getByTestId('onboarding-strength-equipment-full_gym').click();
 
-        const equipmentOption = page
-          .getByRole('button', {
-            name: /Fullt gym|Hemmagym|kroppsvikt|utrustning/i,
-          })
-          .first();
-        await expect(equipmentOption).toBeVisible({ timeout: 15000 });
-        await equipmentOption.click();
-      }
+    await expect(page.getByText('Har du några skador', { exact: false })).toBeVisible();
+    await page.getByTestId('onboarding-strength-injury-no').click();
 
-      // Injury step – kan hoppas över i vissa varianter, gör assertionen defensiv.
-      const injuriesTitle = page.getByText('Har du några skador', { exact: false });
-      if (await injuriesTitle.isVisible().catch(() => false)) {
-        await expect(injuriesTitle).toBeVisible();
-        await page.getByText('Nej, allt är bra', { exact: false }).click();
+    await expect(page.getByText('Hur ofta vill du träna?', { exact: false })).toBeVisible();
+    await page.getByTestId('onboarding-strength-days-3').click();
 
-        // Debug: snapshot efter skade-steget för att bekräfta nästa steg i flödet.
-        await page.waitForTimeout(1000);
-        await page.screenshot({
-          path: 'test-results/debug-strength-post-injury-userflows.png',
-          fullPage: true,
-        });
-      }
+    await expect(page.getByText(/Redo att börja/i)).toBeVisible({ timeout: 15000 });
+    await page.getByRole('button', { name: /Nästa/i }).click();
+    await expect(page.getByText('Välj ditt Trail Name', { exact: false })).toBeVisible({ timeout: 15000 });
+    await page.locator('input[maxlength="30"]').fill('StyrkeTest');
+    await page.getByRole('button', { name: /Fortsätt/i }).click();
 
-      // Frequency step – texten kan variera, matcha bredare på "ofta/träna/dagar/vecka".
-      const frequencyHeading = page.getByText(
-        /Hur ofta vill du träna\?|ofta.*träna|träna.*ofta|dagar.*vecka/i,
-        { exact: false }
-      );
-      await expect(frequencyHeading).toBeVisible({ timeout: 20000 });
-
-      const threeDaysPerWeekButton = page.getByRole('button', {
-        name: /3.*dagar.*vecka/i,
-      });
-      await expect(threeDaysPerWeekButton).toBeVisible({ timeout: 15000 });
-      await threeDaysPerWeekButton.click();
-    }
-  );
+    await expect(
+      page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+    ).toBeVisible({ timeout: 15000 });
+  });
 });
 
 test.describe('Schedule generation', () => {

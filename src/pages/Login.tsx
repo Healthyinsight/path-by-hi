@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import i18n from '@/i18n/config';
 import { Loader as Loader2, Mail, CircleCheck as CheckCircle, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { AnimatedTitle } from '@/components/AnimatedTitle';
@@ -305,7 +307,23 @@ export default function Login() {
           </motion.p>
         </div>
 
-        <div className="w-full max-w-[480px]">
+        <div className="w-full max-w-[480px] space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">{t('login.language')}</Label>
+            <p className="text-xs text-muted-foreground">{t('login.languageHint')}</p>
+            <Select
+              value={i18n.language.startsWith('en') ? 'en' : 'sv'}
+              onValueChange={(v) => void i18n.changeLanguage(v)}
+            >
+              <SelectTrigger className="h-10 w-full max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sv">{t('settings.langSv')}</SelectItem>
+                <SelectItem value="en">{t('settings.langEn')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           {phase === 'sent' ? (
             <div className="card-glass p-6 md:px-12 md:py-10 space-y-4 text-center">
               <CheckCircle className="mx-auto h-12 w-12 text-primary" />
@@ -414,7 +432,7 @@ export default function Login() {
                       setEmail(e.target.value);
                       setErrorKind(null);
                     }}
-                    placeholder="din@email.se"
+                    placeholder={t('login.emailPlaceholder')}
                     autoComplete="email"
                     disabled={phase === 'sending'}
                     className="h-[52px] text-base rounded-lg ring-offset-background focus-visible:ring-2 focus-visible:ring-primary"
