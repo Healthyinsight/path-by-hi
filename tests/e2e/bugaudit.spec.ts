@@ -90,18 +90,61 @@ async function seedNext4WeeksSchedule(supabase: any, userId: string, profile: an
   if (error) throw error;
 }
 
-async function loginAsTestUser(page: import('@playwright/test').Page) {
+const SUPABASE_AUTH_STORAGE_KEY = 'sb-sbfkoeozczzgyvakxozh-auth-token';
+/** Same as `LOCALE_STORAGE_KEY` in src/i18n/config.ts */
+const PATH_TRACKER_LOCALE_KEY = 'pathTracker.locale';
+
+async function loginAsTestUser(
+  page: import('@playwright/test').Page,
+  opts?: { startPath?: string }
+) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const { data } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: 'test@pathtracker.dev',
     password: 'TestUser2026!',
   });
+  if (error || !data.session) {
+    throw new Error(`E2E login failed: ${error?.message ?? 'no session'}`);
+  }
   const sessionStr = JSON.stringify(data.session);
-  await page.addInitScript((s: string) => {
-    window.localStorage.setItem('sb-sbfkoeozczzgyvakxozh-auth-token', s);
-  }, sessionStr);
-  await page.goto('/');
-  await page.waitForTimeout(1500);
+  const storageTuple = [SUPABASE_AUTH_STORAGE_KEY, sessionStr, PATH_TRACKER_LOCALE_KEY] as [
+    string,
+    string,
+    string,
+  ];
+
+  await page.addInitScript(
+    ([authKey, json, localeKey]: [string, string, string]) => {
+      window.localStorage.setItem(authKey, json);
+      window.localStorage.setItem(localeKey, 'sv');
+    },
+    storageTuple
+  );
+
+  const startPath = opts?.startPath ?? '/';
+  await page.goto(startPath, { waitUntil: 'domcontentloaded' });
+
+  async function injectSessionAndMaybeReload() {
+    await page.evaluate(
+      ([authKey, json, localeKey]: [string, string, string]) => {
+        window.localStorage.setItem(authKey, json);
+        window.localStorage.setItem(localeKey, 'sv');
+      },
+      storageTuple
+    );
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
+
+  if (!(await page.locator('.app-container').first().isVisible().catch(() => false))) {
+    await injectSessionAndMaybeReload();
+  }
+
+  await page.waitForTimeout(800);
+  await expect(page).not.toHaveURL(/\/(login|onboarding)/, {
+    timeout: 20000,
+  });
+  // Main app pages use .app-container; Login/Onboarding do not.
+  await expect(page.locator('.app-container').first()).toBeVisible({ timeout: 20000 });
 }
 
 function mondayOfCurrentWeek(): Date {
@@ -122,7 +165,7 @@ async function restoreIronBaseline(supabase: any) {
   const goal = new Date();
   goal.setMonth(goal.getMonth() + 6);
   const goalDate = goal.toISOString().split('T')[0];
-  await supabase.from('user_profiles').upsert(
+  const { error } = await supabase.from('user_profiles').upsert(
     {
       user_id: testUserId,
       archetype: 'IRONMAN',
@@ -134,6 +177,9 @@ async function restoreIronBaseline(supabase: any) {
     },
     { onConflict: 'user_id' }
   );
+  if (error) {
+    throw new Error(`restoreIronBaseline failed: ${error.message}`);
+  }
 }
 
 test.beforeAll(async () => {
@@ -155,9 +201,10 @@ test.beforeEach(async () => {
 
 test.describe('Bug audit – Schedule / kalender', () => {
   test('week strip starts with Monday label and range matches current ISO week (Mon–Sun)', async ({ page }) => {
-    await loginAsTestUser(page);
-    await page.goto('/schedule');
-    await expect(page.getByText('Träningsschema', { exact: false })).toBeVisible({ timeout: 20000 });
+    await loginAsTestUser(page, { startPath: '/schedule' });
+    await expect(
+      page.getByRole('heading', { name: /Träningsschema|Training schedule/i })
+    ).toBeVisible({ timeout: 20000 });
 
     const monday = mondayOfCurrentWeek();
     const sunday = new Date(monday);
@@ -182,9 +229,10 @@ test.describe('Bug audit – Schedule / kalender', () => {
     if (!profile) throw new Error('No profile');
     await seedNext4WeeksSchedule(supabase, testUserId, profile as any);
 
-    await loginAsTestUser(page);
-    await page.goto('/schedule');
-    await expect(page.getByText('Träningsschema', { exact: false })).toBeVisible({ timeout: 20000 });
+    await loginAsTestUser(page, { startPath: '/schedule' });
+    await expect(
+      page.getByRole('heading', { name: /Träningsschema|Training schedule/i })
+    ).toBeVisible({ timeout: 20000 });
     await page.waitForTimeout(5000);
 
     const swimBikeRun = page.getByText(/Simning|Cykling|Löpning/);
@@ -201,7 +249,9 @@ test.describe('Bug audit – TodayView', () => {
 
     await loginAsTestUser(page);
     await page.goto('/');
-    await expect(page.getByText('Insikter', { exact: false })).toBeVisible({ timeout: 20000 });
+    await expect(
+      page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+    ).toBeVisible({ timeout: 20000 });
     await expect(page.getByRole('heading', { name: `Hej, ${trail}!` })).toBeVisible({ timeout: 15000 });
   });
 
@@ -242,7 +292,9 @@ test.describe('Bug audit – TodayView', () => {
 
     await loginAsTestUser(page);
     await page.goto('/');
-    await expect(page.getByText('Insikter', { exact: false })).toBeVisible({ timeout: 20000 });
+    await expect(
+      page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+    ).toBeVisible({ timeout: 20000 });
     await expect(page.getByText(pick.insight_title, { exact: false })).toBeVisible({ timeout: 20000 });
   });
 
@@ -278,10 +330,13 @@ test.describe('Bug audit – Settings / profil', () => {
     await supabase.from('user_profiles').update({ height_cm: null }).eq('user_id', testUserId);
 
     await page.goto('/settings');
-    const bodyCard = page.locator('.card-athletic').filter({ hasText: 'Kropp & hälsa' }).first();
+    const bodyCard = page
+      .locator('.card-athletic')
+      .filter({ hasText: /Kropp & hälsa|Body & health/i })
+      .first();
     const heightInput = bodyCard.getByRole('spinbutton').nth(1);
     await heightInput.fill('182');
-    await bodyCard.getByRole('button', { name: /^Spara$/ }).click();
+    await bodyCard.getByRole('button', { name: /^(Spara|Save)$/ }).click();
     await expect(page.getByText('Sparad!', { exact: false })).toBeVisible({ timeout: 20000 });
 
     let ok = false;
@@ -361,7 +416,9 @@ test.describe('Bug audit – Auth', () => {
 
     const page2 = await context.newPage();
     await loginAsTestUser(page2);
-    await expect(page2.getByText('Insikter', { exact: false })).toBeVisible({ timeout: 20000 });
+    await expect(
+      page2.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+    ).toBeVisible({ timeout: 20000 });
     await expect(page2).not.toHaveURL(/\/onboarding/);
     await page2.close();
   });
@@ -369,9 +426,13 @@ test.describe('Bug audit – Auth', () => {
   test('session survives full page reload on TodayView', async ({ page }) => {
     await loginAsTestUser(page);
     await page.goto('/');
-    await expect(page.getByText('Insikter', { exact: false })).toBeVisible({ timeout: 20000 });
+    await expect(
+      page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+    ).toBeVisible({ timeout: 20000 });
     await page.reload();
-    await expect(page.getByText('Insikter', { exact: false })).toBeVisible({ timeout: 20000 });
+    await expect(
+      page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+    ).toBeVisible({ timeout: 20000 });
     await expect(page).not.toHaveURL(/\/login/);
   });
 });
@@ -442,7 +503,9 @@ test.describe('Bug audit – Retake quiz & onboarding DB', () => {
       await summaryStart.click();
     }
 
-    await expect(page.getByText('Insikter', { exact: false })).toBeVisible({ timeout: 30000 });
+    await expect(
+      page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+    ).toBeVisible({ timeout: 30000 });
 
       let p: {
         archetype?: string;
@@ -546,7 +609,9 @@ test.describe('Bug audit – Retake quiz & onboarding DB', () => {
         await summaryStart.click();
       }
 
-      await expect(page.getByText('Insikter', { exact: false })).toBeVisible({ timeout: 30000 });
+      await expect(
+        page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+      ).toBeVisible({ timeout: 30000 });
 
       const { data: prof } = await supabase
         .from('user_profiles')
@@ -560,7 +625,9 @@ test.describe('Bug audit – Retake quiz & onboarding DB', () => {
       expect((prof?.disciplines as string[]) ?? []).toContain('strength');
 
       await page.goto('/schedule');
-      await expect(page.getByText('Träningsschema', { exact: false })).toBeVisible({ timeout: 20000 });
+      await expect(
+        page.getByRole('heading', { name: /Träningsschema|Training schedule/i })
+      ).toBeVisible({ timeout: 20000 });
       await page.waitForTimeout(6000);
       await page.getByRole('button', { name: /Generera nytt/i }).click();
       await page.waitForTimeout(4000);

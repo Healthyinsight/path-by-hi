@@ -56,21 +56,58 @@ async function seedNext4WeeksSchedule(supabase: any, userId: string, profile: an
   if (error) throw error;
 }
 
-async function loginAsTestUser(page: any) {
+const SUPABASE_AUTH_STORAGE_KEY = 'sb-sbfkoeozczzgyvakxozh-auth-token';
+/** Same as `LOCALE_STORAGE_KEY` in src/i18n/config.ts */
+const PATH_TRACKER_LOCALE_KEY = 'pathTracker.locale';
+
+async function loginAsTestUser(page: any, opts?: { startPath?: string }) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const { data } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: 'test@pathtracker.dev',
     password: 'TestUser2026!',
   });
+  if (error || !data.session) {
+    throw new Error(`E2E login failed: ${error?.message ?? 'no session'}`);
+  }
 
   const sessionStr = JSON.stringify(data.session);
+  const storageTuple = [SUPABASE_AUTH_STORAGE_KEY, sessionStr, PATH_TRACKER_LOCALE_KEY] as [
+    string,
+    string,
+    string,
+  ];
 
-  await page.addInitScript((s: string) => {
-    window.localStorage.setItem('sb-sbfkoeozczzgyvakxozh-auth-token', s);
-  }, sessionStr);
+  await page.addInitScript(
+    ([authKey, json, localeKey]: [string, string, string]) => {
+      window.localStorage.setItem(authKey, json);
+      window.localStorage.setItem(localeKey, 'sv');
+    },
+    storageTuple
+  );
 
-  await page.goto('/');
-  await page.waitForTimeout(1500);
+  const startPath = opts?.startPath ?? '/';
+  await page.goto(startPath, { waitUntil: 'domcontentloaded' });
+
+  async function injectSessionAndMaybeReload() {
+    await page.evaluate(
+      ([authKey, json, localeKey]: [string, string, string]) => {
+        window.localStorage.setItem(authKey, json);
+        window.localStorage.setItem(localeKey, 'sv');
+      },
+      storageTuple
+    );
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
+
+  if (!(await page.locator('.app-container').first().isVisible().catch(() => false))) {
+    await injectSessionAndMaybeReload();
+  }
+
+  await page.waitForTimeout(800);
+  await expect(page).not.toHaveURL(/\/(login|onboarding)/, {
+    timeout: 20000,
+  });
+  await expect(page.locator('.app-container').first()).toBeVisible({ timeout: 20000 });
 }
 
 test.beforeAll(async () => {
@@ -167,7 +204,9 @@ test.describe('Onboarding – triathlon user', () => {
       }
 
       // User should land on TodayView (exact/role — avoid matching unrelated copy e.g. "… dagens pass")
-      await expect(page.getByRole('heading', { name: '💡 Insikter' })).toBeVisible({ timeout: 15000 });
+      await expect(
+        page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+      ).toBeVisible({ timeout: 15000 });
     }
   );
 });
@@ -263,10 +302,10 @@ test.describe('Schedule generation', () => {
   });
 
   test('should regenerate schedule with at least one non-rest day', async ({ page }) => {
-    await loginAsTestUser(page);
-
-    await page.goto('/schedule');
-    await expect(page.getByText('Träningsschema', { exact: false })).toBeVisible({ timeout: 15000 });
+    await loginAsTestUser(page, { startPath: '/schedule' });
+    await expect(
+      page.getByRole('heading', { name: /Träningsschema|Training schedule/i })
+    ).toBeVisible({ timeout: 15000 });
     // Wait for `useUserProfile()` hydration (regenerateSchedule requires `profile`).
     await page.waitForTimeout(8000);
     const supabase = supabaseAuthed;
@@ -337,8 +376,6 @@ test.describe('Schedule generation', () => {
 
 test.describe('TodayView – generate schedule button', () => {
   test('should generate schedule when missing', async ({ page }) => {
-    await loginAsTestUser(page);
-
     const supabase = supabaseAuthed;
     if (!supabase || !testUserId) throw new Error('Missing authed supabase or testUserId');
 
@@ -359,13 +396,17 @@ test.describe('TodayView – generate schedule button', () => {
     const today = new Date().toISOString().split('T')[0];
     await supabase.from('training_schedule').delete().eq('user_id', testUserId).eq('date', today);
 
-    await page.goto('/');
-    await expect(page.getByText('Insikter', { exact: false })).toBeVisible({ timeout: 15000 });
+    await loginAsTestUser(page, { startPath: '/' });
+    await expect(
+      page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+    ).toBeVisible({ timeout: 15000 });
     // Wait for `useUserProfile()` hydration (generateNewSchedule requires `profile`).
     await page.waitForTimeout(8000);
 
     // Always click generate schedule button after deleting today rows
-    const generateButton = page.getByRole('button', { name: /Generera schema/i });
+    const generateButton = page.getByRole('button', {
+      name: /Generera schema|Generate schedule/i,
+    });
     await expect(generateButton).toBeVisible({ timeout: 15000 });
     await generateButton.click();
 
@@ -413,10 +454,6 @@ test.describe('TodayView – generate schedule button', () => {
 
 test.describe('Settings – save body metrics', () => {
   test('should save weight successfully', async ({ page }) => {
-    await loginAsTestUser(page);
-
-    await page.goto('/settings');
-
     if (!testUserId) throw new Error('Missing testUserId');
 
     // Use a fresh Supabase client for DB assertions (avoid relying on an older session token).
@@ -429,13 +466,18 @@ test.describe('Settings – save body metrics', () => {
     // Reset weight so we assert an actual update.
     await supabase.from('user_profiles').update({ weight: null }).eq('user_id', testUserId);
 
-    // Target the "Kropp & hälsa" card only (avoid "Träningsdata" numeric inputs).
-    const bodyCard = page.locator('.card-athletic').filter({ hasText: 'Kropp & hälsa' }).first();
+    await loginAsTestUser(page, { startPath: '/settings' });
+
+    // Target the body & health card only (avoid "Träningsdata" numeric inputs).
+    const bodyCard = page
+      .locator('.card-athletic')
+      .filter({ hasText: /Kropp & hälsa|Body & health/i })
+      .first();
     const weightInput = bodyCard.getByRole('spinbutton').nth(0);
 
     await weightInput.fill('75');
     await expect(weightInput).toHaveValue('75');
-    await bodyCard.getByRole('button', { name: /^Spara$/ }).click();
+    await bodyCard.getByRole('button', { name: /^(Spara|Save)$/ }).click();
 
     await expect(page.getByText('Sparad!', { exact: false })).toBeVisible({ timeout: 20000 });
 
