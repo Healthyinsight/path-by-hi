@@ -413,13 +413,18 @@ test.describe('Bug audit – Retake quiz & onboarding DB', () => {
         archetype: 'triathlon',
         disciplines: ['swim', 'bike', 'run'],
         goal_date: new Date(Date.now() + 86400000 * 180).toISOString().split('T')[0],
+        // Clear restoreIronBaseline display_name so the name step is reachable and stable.
+        display_name: '',
+        trail_name: null,
       },
       { onConflict: 'user_id' }
     );
 
     await loginAsTestUser(page);
-    await page.goto('/onboarding');
-    await page.getByPlaceholder('Ditt förnamn').fill('AuditUser');
+    await page.goto('/onboarding', { waitUntil: 'domcontentloaded' });
+    const nameInput = page.getByPlaceholder(/Ditt förnamn|Your first name/i);
+    await expect(nameInput).toBeVisible({ timeout: 25000 });
+    await nameInput.fill('AuditUser');
     await page.getByRole('button', { name: /Nästa/i }).click();
     await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
     await page.getByTestId('onboarding-goal-strength').click();

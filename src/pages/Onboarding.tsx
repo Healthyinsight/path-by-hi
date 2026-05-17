@@ -58,11 +58,13 @@ export default function Onboarding() {
         .eq('user_id', user.id)
         .single();
       if (data) {
+        const completed = !!data.onboarding_completed;
         setState(s => ({
           ...s,
           display_name: data.display_name || '',
           trail_name: (data as any).trail_name || '',
-          archetype: data.archetype || '',
+          // Retake quiz: DB may still hold the old archetype until the user saves; keep quiz on base steps.
+          archetype: completed ? (data.archetype || '') : '',
         }));
       }
       setPrefilled(true);
