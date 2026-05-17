@@ -18,6 +18,7 @@ const NUMERIC_METRIC_KEYS = [
   'sleep_quality_score',
   'body_battery',
   'stress_level',
+  'mood_score',
 ] as const;
 
 function sanitizeMetricsPayload(

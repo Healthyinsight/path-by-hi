@@ -26,3 +26,4 @@ export {
   type BodyMetrics,
   type BodyMetricsInsert,
 } from '@/services/metricsService';
+export { getExercises, getExercisesByMuscleGroup } from '@/services/exerciseService';

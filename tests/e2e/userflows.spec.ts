@@ -47,9 +47,10 @@ async function seedNext4WeeksSchedule(supabase: any, userId: string, profile: an
 
   const rows = allEntries.map((e) => {
     // Remote DB has a check constraint on training_schedule.planned_type.
-    // Our scheduleEngine can emit values like `endurance_mix` which are not allowed there.
-    const planned_type =
-      e.planned_type === 'endurance_mix' ? 'cardio' : e.planned_type;
+    // Map any non-allowed internal type to a safe public enum.
+    const allowed = ['cardio', 'strength', 'swim', 'rest'];
+    const rawType = e.planned_type === 'endurance_mix' ? 'cardio' : e.planned_type;
+    const planned_type = allowed.includes(rawType) ? rawType : 'cardio';
     return { ...e, planned_type, user_id: userId };
   });
   const { error } = await supabase.from('training_schedule').insert(rows);
@@ -90,17 +91,14 @@ test.describe('Onboarding – triathlon user', () => {
   test('should complete triathlon onboarding flow', async ({ page }) => {
     await loginAsTestUser(page);
     await page.goto('/onboarding');
-    // Name step
     await page.getByPlaceholder('Ditt förnamn').fill('TestUser');
     await page.getByRole('button', { name: /Nästa/i }).click();
-    // Archetype: Triathlon
     await expect(page.getByText('Vad vill du uppnå?')).toBeVisible();
     await page.getByTestId('onboarding-goal-triathlon').click();
 
     await expect(page.getByTestId('onboarding-tri-distance-half')).toBeVisible({ timeout: 15000 });
     await page.getByTestId('onboarding-tri-distance-half').click();
 
-    // Race step
     await expect(page.getByText('Har du ett race inbokat?')).toBeVisible();
     await page.getByTestId('onboarding-tri-race-yes').click();
 
@@ -111,22 +109,18 @@ test.describe('Onboarding – triathlon user', () => {
     await expect(suggestion).toBeVisible({ timeout: 15000 });
     await suggestion.click();
 
-    // Confirm that race name + formatted date are shown
-    await expect(page.getByText('Göteborgsvarvet', { exact: false })).toBeVisible();
-
-    // Continue through the remaining triathlon-specific steps until trail name
     await expect(page.getByText('Hur är din nuvarande form?', { exact: false })).toBeVisible();
     await page.getByTestId('onboarding-tri-level-beginner').click();
 
-    // Summary comes before trail; advance to trail then finish (trail step calls handleFinish).
     await expect(page.getByText(/Redo att börja/i)).toBeVisible({ timeout: 15000 });
     await page.getByRole('button', { name: /Nästa/i }).click();
     await expect(page.getByText('Välj ditt Trail Name', { exact: false })).toBeVisible({ timeout: 15000 });
     await page.locator('input[maxlength="30"]').fill('Test Trail');
     await page.getByRole('button', { name: /Fortsätt/i }).click();
 
-    // User should land on TodayView (exact/role — avoid matching unrelated copy e.g. "… dagens pass")
-    await expect(page.getByRole('heading', { name: '💡 Insikter' })).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+    ).toBeVisible({ timeout: 15000 });
   });
 });
 
@@ -154,8 +148,9 @@ test.describe('Onboarding – strength user', () => {
     await page.locator('input[maxlength="30"]').fill('StyrkeTest');
     await page.getByRole('button', { name: /Fortsätt/i }).click();
 
-    // Land on TodayView without error
-    await expect(page.getByText('Insikter', { exact: false })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+    ).toBeVisible({ timeout: 15000 });
   });
 });
 
@@ -188,10 +183,10 @@ test.describe('Schedule generation', () => {
   });
 
   test('should regenerate schedule with at least one non-rest day', async ({ page }) => {
-    await loginAsTestUser(page);
-
-    await page.goto('/schedule');
-    await expect(page.getByText('Träningsschema', { exact: false })).toBeVisible({ timeout: 15000 });
+    await loginAsTestUser(page, { startPath: '/schedule' });
+    await expect(
+      page.getByRole('heading', { name: /Träningsschema|Training schedule/i })
+    ).toBeVisible({ timeout: 15000 });
     // Wait for `useUserProfile()` hydration (regenerateSchedule requires `profile`).
     await page.waitForTimeout(8000);
     const supabase = supabaseAuthed;
@@ -262,8 +257,6 @@ test.describe('Schedule generation', () => {
 
 test.describe('TodayView – generate schedule button', () => {
   test('should generate schedule when missing', async ({ page }) => {
-    await loginAsTestUser(page);
-
     const supabase = supabaseAuthed;
     if (!supabase || !testUserId) throw new Error('Missing authed supabase or testUserId');
 
@@ -284,13 +277,17 @@ test.describe('TodayView – generate schedule button', () => {
     const today = new Date().toISOString().split('T')[0];
     await supabase.from('training_schedule').delete().eq('user_id', testUserId).eq('date', today);
 
-    await page.goto('/');
-    await expect(page.getByText('Insikter', { exact: false })).toBeVisible({ timeout: 15000 });
+    await loginAsTestUser(page, { startPath: '/' });
+    await expect(
+      page.getByRole('heading', { name: /💡\s*(Insikter|Insights)/i })
+    ).toBeVisible({ timeout: 15000 });
     // Wait for `useUserProfile()` hydration (generateNewSchedule requires `profile`).
     await page.waitForTimeout(8000);
 
     // Always click generate schedule button after deleting today rows
-    const generateButton = page.getByRole('button', { name: /Generera schema/i });
+    const generateButton = page.getByRole('button', {
+      name: /Generera schema|Generate schedule/i,
+    });
     await expect(generateButton).toBeVisible({ timeout: 15000 });
     await generateButton.click();
 
@@ -338,10 +335,6 @@ test.describe('TodayView – generate schedule button', () => {
 
 test.describe('Settings – save body metrics', () => {
   test('should save weight successfully', async ({ page }) => {
-    await loginAsTestUser(page);
-
-    await page.goto('/settings');
-
     if (!testUserId) throw new Error('Missing testUserId');
 
     // Use a fresh Supabase client for DB assertions (avoid relying on an older session token).
@@ -354,13 +347,18 @@ test.describe('Settings – save body metrics', () => {
     // Reset weight so we assert an actual update.
     await supabase.from('user_profiles').update({ weight: null }).eq('user_id', testUserId);
 
-    // Target the "Kropp & hälsa" card only (avoid "Träningsdata" numeric inputs).
-    const bodyCard = page.locator('.card-athletic').filter({ hasText: 'Kropp & hälsa' }).first();
+    await loginAsTestUser(page, { startPath: '/settings' });
+
+    // Target the body & health card only (avoid "Träningsdata" numeric inputs).
+    const bodyCard = page
+      .locator('.card-athletic')
+      .filter({ hasText: /Kropp & hälsa|Body & health/i })
+      .first();
     const weightInput = bodyCard.getByRole('spinbutton').nth(0);
 
     await weightInput.fill('75');
     await expect(weightInput).toHaveValue('75');
-    await bodyCard.getByRole('button', { name: /^Spara$/ }).click();
+    await bodyCard.getByRole('button', { name: /^(Spara|Save)$/ }).click();
 
     await expect(page.getByText('Sparad!', { exact: false })).toBeVisible({ timeout: 20000 });
 

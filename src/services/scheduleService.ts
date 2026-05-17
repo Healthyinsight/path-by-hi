@@ -63,8 +63,33 @@ export async function upsertSchedule(
   if (entries.length === 0) {
     return { data: [], error: null };
   }
-  const rows = entries.map((e) => ({ ...e, user_id: userId }));
-  const { data, error } = await supabase.from('training_schedule').insert(rows).select('*');
+
+  const getWeekStartDate = (dateStr: string): string => {
+    const d = new Date(dateStr);
+    const day = d.getDay(); // 0 = Sun, 1 = Mon
+    const diff = (day + 6) % 7; // days since Monday
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - diff);
+    return monday.toISOString().split('T')[0]!;
+  };
+
+  const rows = entries.map((e) => {
+    const weekStart =
+      (e as any).week_start_date && typeof (e as any).week_start_date === 'string'
+        ? (e as any).week_start_date
+        : getWeekStartDate(e.date as string);
+    return {
+      ...e,
+      source: (e as any).source ?? 'generated',
+      week_start_date: weekStart,
+      user_id: userId,
+    } as ScheduleRow;
+  });
+
+  const { data, error } = await supabase
+    .from('training_schedule')
+    .upsert(rows, { onConflict: 'user_id,date', ignoreDuplicates: false })
+    .select('*');
   return { data, error };
 }
 
