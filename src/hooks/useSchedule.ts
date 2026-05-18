@@ -69,11 +69,9 @@ export function useSchedule() {
           scheduleLang,
         );
         for (const e of rows) {
-          const planned_type =
-            e.planned_type === 'endurance_mix' ? 'cardio' : e.planned_type;
           allEntries.push({
             date: e.date,
-            planned_type,
+            planned_type: e.planned_type,
             planned_subtype: e.planned_subtype,
             planned_sport: e.planned_sport,
             planned_details: e.planned_details,
@@ -83,6 +81,7 @@ export function useSchedule() {
 
       const { error: insErr } = await upsertSchedule(user.id, allEntries);
       if (insErr) {
+        console.error('[useSchedule] upsertSchedule error:', insErr);
         toast.error(t('schedule.toastGenerateFail'));
         return false;
       }

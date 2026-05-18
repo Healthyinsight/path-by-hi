@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { BottomNav } from '@/components/BottomNav';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { generateProfileWeeklySchedule } from '@/lib/scheduleEngine';
+import { normalizePlannedType } from '@/services/scheduleService';
 import {
   Check, Bike, Dumbbell, Waves, Target, Coffee,
   ChevronLeft, ChevronRight, RefreshCw,
@@ -101,9 +102,13 @@ export default function Schedule() {
       start.setDate(base.getDate() + i * 7);
       allEntries.push(...generateProfileWeeklySchedule(profileInput, start, scheduleLang));
     }
-    const rows = allEntries.map((e) => ({ ...e, user_id: user.id }));
+    const rows = allEntries.map((e) => ({
+      ...e,
+      planned_type: normalizePlannedType(e.planned_type),
+      user_id: user.id,
+    }));
     const { error } = await supabase.from('training_schedule').insert(rows);
-    if (error) { toast.error(t('schedule.toastGenerateFail')); }
+    if (error) { console.error('[Schedule] seedSchedule error:', error); toast.error(t('schedule.toastGenerateFail')); }
     else { toast.success(t('schedule.seedSuccess')); await loadSchedule(); }
     setGenerating(false);
   }, [user, profile, loadSchedule, t, scheduleLang]);
@@ -131,9 +136,13 @@ export default function Schedule() {
       start.setDate(base.getDate() + i * 7);
       allEntries.push(...generateProfileWeeklySchedule(profileInput, start, scheduleLang));
     }
-    const rows = allEntries.map((e) => ({ ...e, user_id: user.id }));
+    const rows = allEntries.map((e) => ({
+      ...e,
+      planned_type: normalizePlannedType(e.planned_type),
+      user_id: user.id,
+    }));
     const { error } = await supabase.from('training_schedule').insert(rows);
-    if (error) { toast.error(t('schedule.toastGenerateFail')); }
+    if (error) { console.error('[Schedule] regenerateSchedule error:', error); toast.error(t('schedule.toastGenerateFail')); }
     else { toast.success(t('schedule.toastRegenerateOk')); await loadSchedule(); }
     setGenerating(false);
   }, [user, profile, loadSchedule, t, scheduleLang]);
