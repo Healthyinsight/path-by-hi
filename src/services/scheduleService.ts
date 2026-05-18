@@ -54,8 +54,27 @@ export async function getSchedule(
 }
 
 /**
- * Infogar schemarader för användaren. (Inget unikt (user_id,date) i schema – riktig upsert kräver ev. delete + insert.)
+ * Upsert schedule rows for a user. Relies on the UNIQUE constraint on (user_id, date).
  */
+const PLANNED_TYPE_MAP: Record<string, string> = {
+  endurance_mix: 'cardio',
+  primary:       'cardio',
+  secondary:     'cardio',
+  mobility:      'strength',
+  outdoor:       'cardio',
+  explore:       'cardio',
+  swim_or_class: 'swim',
+};
+
+const VALID_PLANNED_TYPES = new Set([
+  'cardio', 'strength', 'swim', 'rest',
+  'bike', 'run', 'yoga', 'walk', 'hiit', 'recovery',
+]);
+
+export function normalizePlannedType(raw: string): string {
+  return PLANNED_TYPE_MAP[raw] ?? (VALID_PLANNED_TYPES.has(raw) ? raw : 'rest');
+}
+
 export async function upsertSchedule(
   userId: string,
   entries: ScheduleEntry[],
@@ -80,6 +99,7 @@ export async function upsertSchedule(
         : getWeekStartDate(e.date as string);
     return {
       ...e,
+      planned_type: normalizePlannedType((e as any).planned_type ?? 'rest'),
       source: (e as any).source ?? 'generated',
       week_start_date: weekStart,
       user_id: userId,
