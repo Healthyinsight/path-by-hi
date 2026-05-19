@@ -35,6 +35,8 @@ import {
   WELLNESS_FOCUS_OPTIONS,
 } from '@/onboarding/quizConfig';
 import { mapQuizStateToSaveBundle } from '@/onboarding/mapToProfile';
+import { generateAndUpsert } from '@/services/scheduleService';
+import { generateForToday } from '@/services/nutritionService';
 
 export default function Onboarding() {
   const { t, i18n } = useTranslation();
@@ -149,6 +151,28 @@ export default function Onboarding() {
       if (nameError) {
         console.error('Name update error:', nameError);
         toast.error(t('onboarding.toastNameUpdateFail'));
+      }
+
+      // Generate 7-day schedule from today (idempotent, non-blocking)
+      try {
+        const { error: schedErr } = await generateAndUpsert(authUser.id);
+        if (schedErr) {
+          console.error('[Onboarding] schedule gen error:', schedErr);
+          toast.warning(t('onboarding.toastScheduleGenFail', { defaultValue: 'Schema kunde inte genereras – öppna appen och generera manuellt' }));
+        }
+      } catch (e) {
+        console.error('[Onboarding] schedule gen error:', e);
+      }
+
+      // Generate today's nutrition plan based on body metrics + workout type (idempotent, non-blocking)
+      try {
+        const { error: nutErr } = await generateForToday(authUser.id);
+        if (nutErr) {
+          console.error('[Onboarding] nutrition gen error:', nutErr);
+          toast.warning(t('onboarding.toastNutritionGenFail', { defaultValue: 'Kostplan kunde inte genereras automatiskt' }));
+        }
+      } catch (e) {
+        console.error('[Onboarding] nutrition gen error:', e);
       }
 
       navigate('/', { replace: true });

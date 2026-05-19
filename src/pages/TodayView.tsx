@@ -23,26 +23,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
-import { Check, Calendar, ChefHat, ClipboardList, Settings } from 'lucide-react';
+import { Check, Calendar, ChefHat, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 import { getNutritionTargets } from '@/lib/nutritionEngine';
 import { addMetrics, getLatestMetrics, getMetricsHistory } from '@/services/metricsService';
 
 /* ---- helpers ---- */
 const fmtDate = (d: Date) => d.toISOString().split('T')[0];
-const RACE_DATE = new Date('2026-07-05');
-
-function daysUntilRace() {
-  return Math.max(0, Math.ceil((RACE_DATE.getTime() - Date.now()) / 86400000));
-}
-
-function weeksProgress() {
-  const totalWeeks = 16;
-  const daysLeft = daysUntilRace();
-  const weeksLeft = Math.ceil(daysLeft / 7);
-  const currentWeek = Math.max(1, totalWeeks - weeksLeft + 1);
-  return { currentWeek, totalWeeks };
-}
 
 function getUserFirstName(user: any, profile: any): string {
   const meta = user?.user_metadata;
@@ -107,6 +94,8 @@ export default function TodayView() {
   const [loadingNutrition, setLoadingNutrition] = useState(true);
   const [latestMetrics, setLatestMetrics] = useState<{
     body_battery: number | null;
+    hrv_rmssd: number | null;
+    sleep_quality_score: number | null;
     garmin_measured_at: string | null;
     created_at: string;
     date: string | null;
@@ -122,8 +111,39 @@ export default function TodayView() {
   const [showInlineMoodChoices, setShowInlineMoodChoices] = useState(false);
 
   const insightsLimited = insights.slice(0, 2);
-  const hasRecoverySignal =
-    !loadingGarminBattery && latestMetrics?.body_battery != null;
+
+  // True only when at least one Garmin field is non-null within the last 7 days
+  const hasGarminRecoveryData = useMemo(() => {
+    if (loadingGarminBattery || !latestMetrics) return false;
+    const hasSignal =
+      latestMetrics.body_battery != null ||
+      latestMetrics.hrv_rmssd != null ||
+      latestMetrics.sleep_quality_score != null;
+    if (!hasSignal) return false;
+    const dateStr =
+      latestMetrics.date ?? latestMetrics.garmin_measured_at ?? latestMetrics.created_at;
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return new Date(dateStr) >= sevenDaysAgo;
+  }, [loadingGarminBattery, latestMetrics]);
+
+  // Race countdown derived from profile.goal_date (not hardcoded)
+  const goalDateStr = profile?.goal_date ?? null;
+  const raceDate = useMemo(
+    () => (goalDateStr ? new Date(goalDateStr + 'T00:00:00') : null),
+    [goalDateStr],
+  );
+  const daysLeft = useMemo(
+    () =>
+      raceDate ? Math.max(0, Math.ceil((raceDate.getTime() - Date.now()) / 86400000)) : 0,
+    [raceDate],
+  );
+  const { currentWeek, totalWeeks } = useMemo(() => {
+    if (!raceDate) return { currentWeek: 1, totalWeeks: 16 };
+    const tw = 16;
+    const wLeft = Math.ceil(daysLeft / 7);
+    return { currentWeek: Math.max(1, tw - wLeft + 1), totalWeeks: tw };
+  }, [raceDate, daysLeft]);
 
   const trSport = (s?: string | null) =>
     s && ['bike', 'run', 'swim', 'strength'].includes(s) ? t(`sports.${s}`) : s || '';
@@ -159,6 +179,8 @@ export default function TodayView() {
       } else {
         setLatestMetrics({
           body_battery: data.body_battery,
+          hrv_rmssd: data.hrv_rmssd,
+          sleep_quality_score: data.sleep_quality_score,
           garmin_measured_at: data.garmin_measured_at,
           created_at: data.created_at,
           date: (data as any).date ?? null,
@@ -327,8 +349,6 @@ export default function TodayView() {
     ? tipKey
     : 'rest';
   const nutritionTip = t(`today.nutritionTip.${nutritionTipKey}` as 'today.nutritionTip.rest');
-  const { currentWeek, totalWeeks } = weeksProgress();
-  const daysLeft = daysUntilRace();
   const firstNameRaw = getUserFirstName(user, profile);
   const firstName = firstNameRaw || t('common.nameFallback');
   const greeting = useMemo(() => {
@@ -409,11 +429,9 @@ export default function TodayView() {
           </p>
         </motion.section>
 
-        {/* Garmin Body Battery */}
-        <motion.section variants={cardVariant(0)} initial="hidden" animate="visible" className="mb-4">
-          {loadingGarminBattery ? (
-            <div className="card-glass animate-pulse h-20" />
-          ) : latestMetrics?.body_battery != null ? (
+        {/* Garmin Body Battery — only render when live data is available */}
+        {!loadingGarminBattery && hasGarminRecoveryData && latestMetrics?.body_battery != null && (
+          <motion.section variants={cardVariant(0)} initial="hidden" animate="visible" className="mb-4">
             <div className="card-glass space-y-1 py-4">
               <p
                 style={{
@@ -447,41 +465,8 @@ export default function TodayView() {
                 })}
               </p>
             </div>
-          ) : (
-            <div className="card-glass space-y-3 py-4">
-              <p
-                style={{
-                  fontFamily: "'Merriweather', serif",
-                  fontSize: '15px',
-                  fontWeight: 600,
-                  color: '#1A2B32',
-                }}
-              >
-                {t('today.noRecoverySignal')}
-              </p>
-              <p
-                style={{
-                  fontFamily: "'Merriweather Sans', sans-serif",
-                  fontSize: '14px',
-                  color: '#6B7B84',
-                  lineHeight: 1.5,
-                }}
-              >
-                {t('today.noRecoveryBody')}
-              </p>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  className="touch-target w-full sm:flex-1"
-                  style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
-                  onClick={() => navigate('/settings')}
-                >
-                  <Settings className="mr-2 h-4 w-4" />
-                  {t('today.toSettings')}
-                </Button>
-              </div>
-            </div>
-          )}
-        </motion.section>
+          </motion.section>
+        )}
 
         {/* Recovery mood inline card when no recent body_metrics */}
         <AnimatePresence>
@@ -663,24 +648,24 @@ export default function TodayView() {
           )}
         </motion.section>
 
-        {/* 2. Recovery Ring — alltid yta; neutral placeholder utan live-signal så layouten inte kollapsar */}
-        <motion.section variants={cardVariant(1)} initial="hidden" animate="visible" className="mb-4">
-          {loadingGarminBattery ? (
-            <div className="card-glass animate-pulse mx-auto h-[min(360px,70vw)] max-w-[320px] rounded-xl" />
-          ) : (
-            <RecoveryRing variant={hasRecoverySignal ? 'live' : 'placeholder'} />
-          )}
-        </motion.section>
+        {/* 2. Recovery Ring — only render when live Garmin data exists. No empty rings/skeletons. */}
+        {hasGarminRecoveryData && (
+          <motion.section variants={cardVariant(1)} initial="hidden" animate="visible" className="mb-4">
+            <RecoveryRing variant="live" />
+          </motion.section>
+        )}
 
-        {/* 3. Race Countdown */}
-        <motion.section variants={cardVariant(2)} initial="hidden" animate="visible" className="mb-4">
-          <RaceCountdownArc
-            currentWeek={currentWeek}
-            totalWeeks={totalWeeks}
-            daysLeft={daysLeft}
-            goalName={profile?.goal_name || 'Ironman 70.3 Jönköping'}
-          />
-        </motion.section>
+        {/* 3. Race Countdown — only shown when show_race_countdown is set and goal_date exists */}
+        {profile?.show_race_countdown && profile?.goal_date && (
+          <motion.section variants={cardVariant(2)} initial="hidden" animate="visible" className="mb-4">
+            <RaceCountdownArc
+              currentWeek={currentWeek}
+              totalWeeks={totalWeeks}
+              daysLeft={daysLeft}
+              goalName={profile?.goal_name || 'Ironman 70.3 Jönköping'}
+            />
+          </motion.section>
+        )}
 
         {/* 4. Workout Card */}
         <motion.section
@@ -910,6 +895,37 @@ export default function TodayView() {
             </div>
           )}
         </motion.section>
+
+        {/* Garmin integration CTA — subtle, shown only when no recovery data */}
+        {!loadingGarminBattery && !hasGarminRecoveryData && (
+          <motion.section variants={cardVariant(7)} initial="hidden" animate="visible" className="mb-4">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-[#E8EDEF] bg-white/60 px-4 py-3">
+              <p
+                style={{
+                  fontFamily: "'Merriweather Sans', sans-serif",
+                  fontSize: '13px',
+                  color: '#6B7B84',
+                  lineHeight: 1.5,
+                }}
+              >
+                Koppla träningsdata för djupare återhämtningsanalys
+              </p>
+              <a
+                href="/settings#integrations"
+                style={{
+                  fontFamily: "'Merriweather Sans', sans-serif",
+                  fontSize: '12px',
+                  color: '#5095AC',
+                  whiteSpace: 'nowrap',
+                  textDecoration: 'none',
+                  flexShrink: 0,
+                }}
+              >
+                Läs mer →
+              </a>
+            </div>
+          </motion.section>
+        )}
 
         {/* 6. Quick Actions */}
         <motion.section variants={cardVariant(6)} initial="hidden" animate="visible" className="pb-2">

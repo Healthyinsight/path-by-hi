@@ -1,6 +1,8 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import { generateProfileWeeklySchedule } from '@/lib/scheduleEngine';
+import { getProfile } from './profileService';
 
 export type ScheduleRow = Database['public']['Tables']['training_schedule']['Row'];
 
@@ -111,6 +113,42 @@ export async function upsertSchedule(
     .upsert(rows, { onConflict: 'user_id,date', ignoreDuplicates: false })
     .select('*');
   return { data, error };
+}
+
+const ALLOWED_PLANNED_TYPES = ['cardio', 'strength', 'swim', 'rest'] as const;
+
+/**
+ * Generates 7 days of schedule from today and upserts to training_schedule.
+ * Idempotent: safe to call multiple times (upsert on user_id,date).
+ */
+export async function generateAndUpsert(userId: string): Promise<{ error: PostgrestError | null }> {
+  const { data: profile } = await getProfile(userId);
+  if (!profile?.archetype) {
+    return { error: null };
+  }
+
+  const entries = generateProfileWeeklySchedule(
+    {
+      archetype: profile.archetype,
+      disciplines: profile.disciplines,
+      goal_date: profile.goal_date,
+    },
+    new Date(),
+  );
+
+  const mapped = entries.map((e) => ({
+    ...e,
+    planned_type: (
+      e.planned_type === 'endurance_mix'
+        ? 'cardio'
+        : ALLOWED_PLANNED_TYPES.includes(e.planned_type as (typeof ALLOWED_PLANNED_TYPES)[number])
+          ? e.planned_type
+          : 'cardio'
+    ) as string,
+  }));
+
+  const { error } = await upsertSchedule(userId, mapped);
+  return { error };
 }
 
 export async function deleteSchedule(
