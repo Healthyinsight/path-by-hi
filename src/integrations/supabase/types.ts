@@ -28,6 +28,7 @@ export type Database = {
           max_hr: number | null
           source: string | null
           start_time: string | null
+          strava_activity_id: string | null
           training_zones: Json | null
           type: string
           user_id: string
@@ -45,6 +46,7 @@ export type Database = {
           max_hr?: number | null
           source?: string | null
           start_time?: string | null
+          strava_activity_id?: string | null
           training_zones?: Json | null
           type: string
           user_id: string
@@ -62,6 +64,7 @@ export type Database = {
           max_hr?: number | null
           source?: string | null
           start_time?: string | null
+          strava_activity_id?: string | null
           training_zones?: Json | null
           type?: string
           user_id?: string
@@ -478,6 +481,10 @@ export type Database = {
           id: string
           name: string | null
           run_threshold_pace: string | null
+          strava_access_token: string | null
+          strava_athlete_id: string | null
+          strava_refresh_token: string | null
+          strava_token_expires_at: string | null
           training_phase: string | null
           vo2max_estimate: number | null
         }
@@ -494,6 +501,10 @@ export type Database = {
           id: string
           name?: string | null
           run_threshold_pace?: string | null
+          strava_access_token?: string | null
+          strava_athlete_id?: string | null
+          strava_refresh_token?: string | null
+          strava_token_expires_at?: string | null
           training_phase?: string | null
           vo2max_estimate?: number | null
         }
@@ -510,6 +521,10 @@ export type Database = {
           id?: string
           name?: string | null
           run_threshold_pace?: string | null
+          strava_access_token?: string | null
+          strava_athlete_id?: string | null
+          strava_refresh_token?: string | null
+          strava_token_expires_at?: string | null
           training_phase?: string | null
           vo2max_estimate?: number | null
         }
