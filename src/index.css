@@ -57,6 +57,45 @@
     --sidebar-border: 207 22% 91%;
     --sidebar-ring: 195 38% 50%;
   }
+
+  .dark {
+    --background: 199 35% 9%;
+    --foreground: 210 20% 98%;
+
+    --card: 195 30% 15%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 195 30% 15%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 195 38% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 195 18% 22%;
+    --secondary-foreground: 210 15% 80%;
+
+    --muted: 195 25% 18%;
+    --muted-foreground: 197 18% 67%;
+
+    --accent: 72 60% 55%;
+    --accent-foreground: 72 40% 20%;
+
+    --destructive: 4 74% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 195 25% 22%;
+    --input: 195 25% 22%;
+    --ring: 195 38% 50%;
+
+    --sidebar-background: 195 30% 12%;
+    --sidebar-foreground: 210 20% 85%;
+    --sidebar-primary: 195 38% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 195 25% 18%;
+    --sidebar-accent-foreground: 210 20% 85%;
+    --sidebar-border: 195 25% 22%;
+    --sidebar-ring: 195 38% 50%;
+  }
 }
 
 @layer base {
@@ -182,6 +221,33 @@
     font-family: 'Inter', system-ui, sans-serif;
     font-size: 13px;
     color: #3D4F58;
+  }
+
+  /* Dark mode overrides for custom utilities */
+
+  .dark .card-glass,
+  .dark .card-athletic {
+    background: rgba(26, 43, 50, 0.85);
+    border: 1px solid rgba(80, 149, 172, 0.15);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  @media (min-width: 640px) {
+    .dark .card-glass:hover { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); }
+  }
+
+  .dark .bg-today {
+    background: linear-gradient(180deg, #0F1A1F 0%, #111F25 50%, #152229 100%);
+  }
+
+  .dark .metric-pill {
+    background: #1A2B32;
+    border: 1px solid rgba(80, 149, 172, 0.2);
+    color: #9FB1B8;
+  }
+
+  .dark .tip-callout {
+    background: rgba(80, 149, 172, 0.08);
   }
 }
 

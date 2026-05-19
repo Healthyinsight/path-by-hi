@@ -13,7 +13,8 @@ import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LogOut, Watch, Check, Loader2, Mail, Target, RefreshCw, Languages } from 'lucide-react';
+import { LogOut, Watch, Check, Loader2, Mail, Target, RefreshCw, Languages, Palette } from 'lucide-react';
+import { useTheme } from '@/providers/ThemeProvider';
 import { toast } from 'sonner';
 import i18n from '@/i18n/config';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,6 +29,8 @@ export default function SettingsPage() {
   const { goals, refetch: refetchGoals } = useGoals();
   const { saveBodyMetrics, saving: savingBody } = useBodyMetrics(refetchProfile);
   const { saveSettings, saving } = usePersistSettings({ refetchProfile, refetchGoals });
+  const { theme, setTheme } = useTheme();
+  const effectiveTheme = theme ?? 'dark';
 
   const [trainingUser, setTrainingUser] = useState<Partial<User>>({});
   const [goal, setGoal] = useState<{ goal_name: string; goal_date: string; goal_emoji: string }>({
@@ -188,6 +191,38 @@ export default function SettingsPage() {
               <SelectItem value="en">{t('settings.langEn')}</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Utseende */}
+        <div className="card-athletic space-y-3">
+          <div className="flex items-center gap-2">
+            <Palette className="h-4 w-4 text-muted-foreground" />
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('settings.appearance')}</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              data-testid="theme-dark"
+              onClick={() => setTheme('dark')}
+              className={`touch-target flex-1 rounded-xl border py-2 text-sm font-medium transition-all duration-200 ${
+                effectiveTheme === 'dark'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-card text-foreground hover:border-primary/40'
+              }`}
+            >
+              {t('settings.themeDark')}
+            </button>
+            <button
+              data-testid="theme-light"
+              onClick={() => setTheme('light')}
+              className={`touch-target flex-1 rounded-xl border py-2 text-sm font-medium transition-all duration-200 ${
+                effectiveTheme === 'light'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-card text-foreground hover:border-primary/40'
+              }`}
+            >
+              {t('settings.themeLight')}
+            </button>
+          </div>
         </div>
 
         <div className="card-athletic">
