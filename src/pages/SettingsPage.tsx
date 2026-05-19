@@ -9,6 +9,7 @@ import { usePersistSettings } from '@/hooks/usePersistSettings';
 import { getUser, type User } from '@/services/usersService';
 import { upsertProfile } from '@/services/profileService';
 import { getCurrentUserId, toFiniteNumber } from '@/services/utils';
+import { getStravaAuthUrl, disconnectStrava } from '@/services/stravaService';
 import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +34,7 @@ export default function SettingsPage() {
   const effectiveTheme = theme ?? 'dark';
 
   const [trainingUser, setTrainingUser] = useState<Partial<User>>({});
+  const [stravaDisconnecting, setStravaDisconnecting] = useState(false);
   const [goal, setGoal] = useState<{ goal_name: string; goal_date: string; goal_emoji: string }>({
     goal_name: '',
     goal_date: '',
@@ -355,6 +357,64 @@ export default function SettingsPage() {
               <Button disabled variant="outline" className="touch-target w-full opacity-50">{t('settings.connectGarmin')}</Button>
               <p className="mt-2 text-xs text-muted-foreground">{t('settings.garminComingSoon')}</p>
             </div>
+          )}
+        </div>
+
+        <div className="card-athletic space-y-3">
+          <div className="flex items-center gap-2">
+            <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
+            </svg>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('settings.stravaConnect')}</p>
+          </div>
+          {trainingUser.strava_athlete_id ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-rest" />
+                <span className="text-sm text-rest">{t('settings.stravaConnected')}</span>
+                <span className="text-xs text-muted-foreground">({trainingUser.strava_athlete_id})</span>
+              </div>
+              <Button
+                variant="outline"
+                className="touch-target w-full"
+                disabled={stravaDisconnecting}
+                onClick={async () => {
+                  if (!user?.id) return;
+                  setStravaDisconnecting(true);
+                  try {
+                    await disconnectStrava(user.id);
+                    setTrainingUser((u) => ({
+                      ...u,
+                      strava_athlete_id: null,
+                      strava_access_token: null,
+                      strava_refresh_token: null,
+                      strava_token_expires_at: null,
+                    }));
+                    toast.success('Strava disconnected.');
+                  } catch {
+                    toast.error('Could not disconnect Strava. Try again.');
+                  } finally {
+                    setStravaDisconnecting(false);
+                  }
+                }}
+              >
+                {stravaDisconnecting ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('settings.stravaDisconnecting')}</>
+                ) : (
+                  t('settings.disconnectStrava')
+                )}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              className="touch-target w-full"
+              onClick={() => {
+                window.location.href = getStravaAuthUrl();
+              }}
+            >
+              {t('settings.connectStrava')}
+            </Button>
           )}
         </div>
 
