@@ -199,6 +199,56 @@ const REST_EN: MealSuggestion[] = [
   { name: 'Protein shake', kcal: 200, protein: 30, carbs: 10, fat: 3 },
 ];
 
+// ---- Mifflin-St Jeor personalised TDEE calculation ----
+
+export interface PersonalNutritionTargets {
+  target_kcal: number;
+  target_protein: number;
+  target_carbs: number;
+  target_fat: number;
+}
+
+function getActivityMultiplier(
+  plannedType?: string | null,
+  plannedSubtype?: string | null,
+): number {
+  if (!plannedType || plannedType === 'rest') return 1.4;
+  if (plannedType === 'strength') return 1.55;
+  if (plannedSubtype === 'long_distance' || plannedSubtype === 'long_swim') return 1.8;
+  // vo2max, technique_intervals, z2_run, z2_bike, default cardio/swim
+  return 1.6;
+}
+
+/**
+ * Calculates personalised TDEE using Mifflin-St Jeor BMR × activity multiplier.
+ * Macros: protein 1.6 g/kg, fat 25 % of kcal, carbs = remainder.
+ */
+export function calcPersonalNutritionTargets(params: {
+  weight: number;
+  height_cm: number;
+  age?: number | null;
+  sex?: 'male' | 'female';
+  plannedType?: string | null;
+  plannedSubtype?: string | null;
+}): PersonalNutritionTargets {
+  const { weight, height_cm, plannedType, plannedSubtype } = params;
+  const age = params.age ?? 30;
+  const sex = params.sex ?? 'male';
+
+  const bmr =
+    sex === 'male'
+      ? 10 * weight + 6.25 * height_cm - 5 * age + 5
+      : 10 * weight + 6.25 * height_cm - 5 * age - 161;
+
+  const multiplier = getActivityMultiplier(plannedType, plannedSubtype);
+  const kcal = Math.round(bmr * multiplier);
+  const protein = Math.round(1.6 * weight);
+  const fat = Math.round((kcal * 0.25) / 9);
+  const carbs = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4));
+
+  return { target_kcal: kcal, target_protein: protein, target_carbs: carbs, target_fat: fat };
+}
+
 export function getMealSuggestions(plannedSubtype: string | null | undefined, locale: 'sv' | 'en'): MealSuggestion[] {
   const en = locale === 'en';
   switch (plannedSubtype) {
