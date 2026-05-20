@@ -346,7 +346,7 @@ export default function SettingsPage() {
             <Watch className="h-4 w-4 text-muted-foreground" />
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('settings.garminConnect')}</p>
           </div>
-          {trainingUser.garmin_user_id ? (
+          {trainingUser.garmin_user_id && trainingUser.garmin_access_token ? (
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-rest" />
               <span className="text-sm text-rest">{t('settings.connected')}</span>
