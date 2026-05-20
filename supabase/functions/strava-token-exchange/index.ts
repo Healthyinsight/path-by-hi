@@ -200,7 +200,7 @@ Deno.serve(async (req: Request) => {
 
   let imported = 0;
   if (activitiesToInsert.length > 0) {
-    const { error: upsertErr, count } = await supabase
+    const { data: upsertedRows, error: upsertErr } = await supabase
       .from('activities')
       .upsert(activitiesToInsert, {
         onConflict: 'user_id,strava_activity_id',
@@ -209,10 +209,10 @@ Deno.serve(async (req: Request) => {
       .select('id');
 
     if (upsertErr) {
-      console.error('[strava-token-exchange] upsert activities failed', upsertErr);
-    } else {
-      imported = count ?? activitiesToInsert.length;
+      console.error('[strava-token-exchange] upsert activities failed', JSON.stringify(upsertErr));
+      return json({ error: 'upsert_activities_failed', detail: upsertErr.message }, 500);
     }
+    imported = upsertedRows?.length ?? 0;
   }
 
   console.log(`[strava-token-exchange] user=${userId} imported=${imported} skipped=${skipped}`);
