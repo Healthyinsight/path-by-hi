@@ -39,7 +39,7 @@ export default function PrivacyPolicy() {
             marginBottom: "16px",
           }}
         >
-          Path by Hi — a service by Healthy Insight
+          Path by HI — a service by Healthy Insight
           <br />
           Last updated: March 16, 2026
         </p>
@@ -54,7 +54,7 @@ export default function PrivacyPolicy() {
         >
           <SectionTitle>1. Who We Are</SectionTitle>
           <BodyText>
-            Path by Hi is a health and fitness platform operated by
+            Path by HI is a health and fitness platform operated by
             Healthy Insight (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;),
             based in Sweden.
           </BodyText>
@@ -63,7 +63,7 @@ export default function PrivacyPolicy() {
           <BodyText>Contact: filipb@healthyinsight.eu</BodyText>
           <BodyText>
             This Privacy Policy explains how we collect, use, store, and
-            protect your personal data when you use Path by Hi web
+            protect your personal data when you use Path by HI web
             application.
           </BodyText>
 
@@ -185,7 +185,7 @@ export default function PrivacyPolicy() {
 
           <SectionTitle>8. Garmin Connect Integration</SectionTitle>
           <BodyText>
-            Path by Hi integrates with Garmin Connect via the Garmin Health API to
+            Path by HI integrates with Garmin Connect via the Garmin Health API to
             provide personalized training insights.
           </BodyText>
           <BulletList
@@ -199,7 +199,7 @@ export default function PrivacyPolicy() {
 
           <SectionTitle>9. Cookies and Tracking</SectionTitle>
           <BodyText>
-            Path by Hi is a Progressive Web App (PWA) and uses:
+            Path by HI is a Progressive Web App (PWA) and uses:
           </BodyText>
           <BulletList
             items={[
@@ -212,7 +212,7 @@ export default function PrivacyPolicy() {
 
           <SectionTitle>10. Children's Privacy</SectionTitle>
           <BodyText>
-            Path by Hi is not intended for children under 16. We do not knowingly
+            Path by HI is not intended for children under 16. We do not knowingly
             collect data from children.
           </BodyText>
 

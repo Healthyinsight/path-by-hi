@@ -99,8 +99,8 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
             color: '#1A2B32',
           }}
         >
-          by Hi
-        </span>
+          by HI
+</span>
       </div>
 
       {/* Powered by badge */}
