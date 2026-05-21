@@ -1,6 +1,6 @@
 {
-  "name": "The Path Tracker",
-  "short_name": "The Path Tracker",
+  "name": "Path by Hi",
+  "short_name": "Path by Hi",
   "description": "Din personliga tränings- och insiktsmotor",
   "start_url": "/",
   "display": "standalone",

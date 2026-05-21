@@ -8,11 +8,10 @@ const WORDS = [
   { word: "Fast",     emoji: "⚡", color: "#D4E67C" },
   { word: "Lean",     emoji: "🎯", color: "#5095AC" },
   { word: "Healthy",  emoji: "🌿", color: "#4CAF50" },
-  { word: "Happy",    emoji: "😊", color: "#FF9800" },
-  { word: "The",      emoji: "✨", color: "#5095AC" },
+  { word: "Path",     emoji: "✨", color: "#5095AC" },
 ];
 
-const TIMINGS = [1500, 1500, 1500, 1500, 1800, 2000, 2500];
+const TIMINGS = [1500, 1500, 1500, 1500, 1800, 2000];
 const RESTART_DELAY = 30_000;
 
 interface AnimatedTitleProps {
@@ -89,7 +88,7 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
           </AnimatePresence>
         </div>
 
-        {/* Static "Path Tracker" */}
+        {/* Static "by Hi" */}
         <span
           className="text-[3rem] sm:text-[4rem]"
           style={{
@@ -100,7 +99,7 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
             color: '#1A2B32',
           }}
         >
-          Path Tracker
+          by Hi
         </span>
       </div>
 
