@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Set repo label
         id: repo
-        run: echo "name=iron-path-tracker" >> $GITHUB_OUTPUT
+              run: echo "name=Path by HI" >> $GITHUB_OUTPUT
 
       - name: POST to Notion on PR opened/reopened
         if: github.event.action == 'opened' || github.event.action == 'reopened'
