@@ -1,0 +1,143 @@
+name: Notion Sync — PR Events
+
+on:
+  pull_request:
+    types: [opened, reopened, closed]
+
+jobs:
+  sync-to-notion:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set repo label
+        id: repo
+        run: echo "name=hi-website" >> $GITHUB_OUTPUT
+
+      - name: POST to Notion on PR opened/reopened
+        if: github.event.action == 'opened' || github.event.action == 'reopened'
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DB_ID: ${{ secrets.NOTION_ANDRINGLOGG_DB_ID }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_DATE: ${{ github.event.pull_request.created_at }}
+          REPO_NAME: ${{ steps.repo.outputs.name }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, urllib.request
+
+          api_key = os.environ["NOTION_API_KEY"]
+          db_id = os.environ["NOTION_DB_ID"]
+
+          payload = {
+            "parent": {"database_id": db_id},
+            "properties": {
+              "Namn": {"title": [{"text": {"content": os.environ["PR_TITLE"]}}]},
+              "Repo": {"select": {"name": os.environ["REPO_NAME"]}},
+              "Status": {"select": {"name": "Pågår"}},
+              "PR-nummer": {"rich_text": [{"text": {"content": "#" + os.environ["PR_NUMBER"]}}]},
+              "PR-länk": {"url": os.environ["PR_URL"]},
+              "Datum": {"date": {"start": os.environ["PR_DATE"]}}
+            }
+          }
+
+          req = urllib.request.Request(
+            "https://api.notion.com/v1/pages",
+            data=json.dumps(payload).encode(),
+            headers={
+              "Authorization": f"Bearer {api_key}",
+              "Notion-Version": "2022-06-28",
+              "Content-Type": "application/json"
+            },
+            method="POST"
+          )
+          with urllib.request.urlopen(req) as resp:
+            result = json.loads(resp.read())
+            print(f"Created Notion page: {result['id']}")
+          EOF
+
+      - name: Update Notion entry to Mergad on PR merged
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DB_ID: ${{ secrets.NOTION_ANDRINGLOGG_DB_ID }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_DATE: ${{ github.event.pull_request.merged_at }}
+          REPO_NAME: ${{ steps.repo.outputs.name }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, urllib.request
+
+          api_key = os.environ["NOTION_API_KEY"]
+          db_id = os.environ["NOTION_DB_ID"]
+          pr_number = "#" + os.environ["PR_NUMBER"]
+          repo_name = os.environ["REPO_NAME"]
+
+          # Query for existing entry matching this PR in this repo
+          query_payload = {
+            "filter": {
+              "and": [
+                {"property": "PR-nummer", "rich_text": {"equals": pr_number}},
+                {"property": "Repo", "select": {"equals": repo_name}}
+              ]
+            }
+          }
+
+          req = urllib.request.Request(
+            f"https://api.notion.com/v1/databases/{db_id}/query",
+            data=json.dumps(query_payload).encode(),
+            headers={
+              "Authorization": f"Bearer {api_key}",
+              "Notion-Version": "2022-06-28",
+              "Content-Type": "application/json"
+            },
+            method="POST"
+          )
+          with urllib.request.urlopen(req) as resp:
+            results = json.loads(resp.read())["results"]
+
+          if results:
+            page_id = results[0]["id"]
+            update_payload = {"properties": {"Status": {"select": {"name": "Mergad"}}}}
+            req = urllib.request.Request(
+              f"https://api.notion.com/v1/pages/{page_id}",
+              data=json.dumps(update_payload).encode(),
+              headers={
+                "Authorization": f"Bearer {api_key}",
+                "Notion-Version": "2022-06-28",
+                "Content-Type": "application/json"
+              },
+              method="PATCH"
+            )
+            with urllib.request.urlopen(req) as resp:
+              print(f"Updated Notion page {page_id} to Mergad")
+          else:
+            # PR was opened before workflow existed — create the entry now
+            create_payload = {
+              "parent": {"database_id": db_id},
+              "properties": {
+                "Namn": {"title": [{"text": {"content": os.environ["PR_TITLE"]}}]},
+                "Repo": {"select": {"name": repo_name}},
+                "Status": {"select": {"name": "Mergad"}},
+                "PR-nummer": {"rich_text": [{"text": {"content": pr_number}}]},
+                "PR-länk": {"url": os.environ["PR_URL"]},
+                "Datum": {"date": {"start": os.environ["PR_DATE"]}}
+              }
+            }
+            req = urllib.request.Request(
+              "https://api.notion.com/v1/pages",
+              data=json.dumps(create_payload).encode(),
+              headers={
+                "Authorization": f"Bearer {api_key}",
+                "Notion-Version": "2022-06-28",
+                "Content-Type": "application/json"
+              },
+              method="POST"
+            )
+            with urllib.request.urlopen(req) as resp:
+              result = json.loads(resp.read())
+              print(f"Created Notion page (merged, no prior entry): {result['id']}")
+          EOF
