@@ -82,6 +82,7 @@ export default function TodayView() {
   const navigate = useNavigate();
   const {
     schedule,
+    hasAnySchedule,
     loading: loadingWorkout,
     regenerate,
     markWorkoutCompleted,
@@ -827,19 +828,23 @@ export default function TodayView() {
                       lineHeight: 1.5,
                     }}
                   >
-                    Det kan vara en välförtjänt vilodag — eller så saknas ett schema.
+                    {hasAnySchedule
+                      ? 'Det kan vara en välförtjänt vilodag.'
+                      : 'Det kan vara en välförtjänt vilodag — eller så saknas ett schema.'}
                   </p>
                 </div>
               </div>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <Button
-                  size="sm"
-                  onClick={generateNewSchedule}
-                  className="touch-target w-full sm:flex-1"
-                  style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
-                >
-                  Generera nytt schema
-                </Button>
+                {!hasAnySchedule && (
+                  <Button
+                    size="sm"
+                    onClick={generateNewSchedule}
+                    className="touch-target w-full sm:flex-1"
+                    style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
+                  >
+                    Generera nytt schema
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"

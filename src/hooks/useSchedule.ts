@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { PostgrestError } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   getScheduleForDate,
   upsertSchedule,
@@ -26,18 +27,27 @@ export function useSchedule() {
   const scheduleLang = i18n.language.startsWith('en') ? 'en' : 'sv';
   const today = useMemo(() => fmtDate(new Date()), []);
   const [schedule, setSchedule] = useState<ScheduleRow[]>([]);
+  const [hasAnySchedule, setHasAnySchedule] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<PostgrestError | null>(null);
 
   const refetch = useCallback(async () => {
     if (!user?.id) {
       setSchedule([]);
+      setHasAnySchedule(false);
       setError(null);
       setLoading(false);
       return;
     }
-    const { data, error: e } = await getScheduleForDate(user.id, today);
+    const [{ data, error: e }, { count }] = await Promise.all([
+      getScheduleForDate(user.id, today),
+      supabase
+        .from('training_schedule')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id),
+    ]);
     setSchedule(data ? [data] : []);
+    setHasAnySchedule((count ?? 0) > 0);
     setError(e);
     setLoading(false);
   }, [user?.id, today]);
@@ -107,6 +117,7 @@ export function useSchedule() {
 
   return {
     schedule,
+    hasAnySchedule,
     loading,
     error,
     regenerate,

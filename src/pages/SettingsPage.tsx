@@ -6,6 +6,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useGoals } from '@/hooks/useGoals';
 import { useBodyMetrics } from '@/hooks/useBodyMetrics';
 import { usePersistSettings } from '@/hooks/usePersistSettings';
+import { useSchedule } from '@/hooks/useSchedule';
 import { getUser, type User } from '@/services/usersService';
 import { upsertProfile } from '@/services/profileService';
 import { getCurrentUserId, toFiniteNumber } from '@/services/utils';
@@ -30,6 +31,7 @@ export default function SettingsPage() {
   const { goals, refetch: refetchGoals } = useGoals();
   const { saveBodyMetrics, saving: savingBody } = useBodyMetrics(refetchProfile);
   const { saveSettings, saving } = usePersistSettings({ refetchProfile, refetchGoals });
+  const { regenerate } = useSchedule();
   const { theme, setTheme } = useTheme();
   const effectiveTheme = theme ?? 'dark';
 
@@ -105,6 +107,7 @@ export default function SettingsPage() {
 
   const save = async () => {
     if (!user) return;
+    const prevGoalDate = userProfile?.goal_date ?? null;
 
     const goalDateRaw = typeof goal.goal_date === 'string' ? goal.goal_date.trim() : '';
     const profileGoalDate =
@@ -133,7 +136,7 @@ export default function SettingsPage() {
         ? trainingUser.name.trim()
         : null;
 
-    await saveSettings({
+    const success = await saveSettings({
       userPatch: {
         name: trainingUser.name ?? null,
         current_weight: toFiniteNumber(trainingUser.current_weight),
@@ -155,6 +158,15 @@ export default function SettingsPage() {
         display_name: displayName,
       },
     });
+
+    const newGoalDate = goal.goal_date?.trim() || null;
+    if (success && newGoalDate !== prevGoalDate && userProfile?.archetype) {
+      await regenerate({
+        archetype: userProfile.archetype,
+        disciplines: userProfile.disciplines || [],
+        goal_date: newGoalDate,
+      });
+    }
   };
 
   const retakeQuiz = async () => {
