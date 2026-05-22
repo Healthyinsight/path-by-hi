@@ -20,6 +20,8 @@ export interface KnowledgeRule {
   is_active: boolean;
 }
 
+export type InsightWithReason = KnowledgeRule & { reasoning?: string };
+
 const fmtDate = (d: Date) => d.toISOString().split('T')[0];
 
 interface TodayMetrics {
@@ -67,79 +69,95 @@ export function useInsights(profile: UserProfile | null) {
     });
   }, [user]);
 
-  const insights = useMemo(() => {
+  const insights = useMemo((): InsightWithReason[] => {
     if (!profile || rules.length === 0) return [];
 
     const userArchetype = profile.archetype || 'wellness';
     const userDisciplines = profile.disciplines || ['run', 'strength'];
     const goalDate = profile.goal_date;
 
-    return rules
-      .filter((rule) => {
-        // Filter by archetype
-        if (!rule.applicable_archetypes.includes(userArchetype)) return false;
+    const result: InsightWithReason[] = [];
 
-        // Filter by disciplines — at least one overlap
-        const hasOverlap = rule.applicable_disciplines.some((d) => userDisciplines.includes(d));
-        if (!hasOverlap) return false;
+    for (const rule of rules) {
+      if (!rule.applicable_archetypes.includes(userArchetype)) continue;
+      if (!rule.applicable_disciplines.some((d) => userDisciplines.includes(d))) continue;
 
-        // Evaluate trigger
-        const cond = rule.trigger_condition || {};
+      const cond = rule.trigger_condition || {};
+      let matches = false;
+      let reasoning: string | undefined;
 
-        switch (rule.trigger_type) {
-          case 'training_type_today': {
-            if (!todayTraining) return false;
-            const matchType = cond.match_type;
-            return (
-              todayTraining.planned_type === matchType ||
-              todayTraining.planned_subtype === matchType
-            );
-          }
-
-          case 'time_of_day': {
-            const hour = new Date().getHours();
-            if (cond.period === 'morning') return hour >= 5 && hour < 10;
-            if (cond.period === 'evening') return hour >= 17 && hour < 22;
-            return false;
-          }
-
-          case 'days_to_goal': {
-            if (!goalDate) return false;
-            const daysLeft = Math.ceil(
-              (new Date(goalDate).getTime() - Date.now()) / 86400000
-            );
-            const threshold = cond.threshold as number;
-            const op = cond.operator as string;
-            if (op === '<=') return daysLeft <= threshold;
-            if (op === '>=') return daysLeft >= threshold;
-            if (op === '<') return daysLeft < threshold;
-            if (op === '>') return daysLeft > threshold;
-            return false;
-          }
-
-          case 'always':
-            return true;
-
-          case 'body_battery_low': {
-            const bb = todayMetrics?.body_battery;
-            return bb != null && bb < (cond.threshold as number);
-          }
-
-          case 'body_battery_high': {
-            const bb = todayMetrics?.body_battery;
-            return bb != null && bb >= (cond.threshold as number);
-          }
-
-          case 'sleep_deficit': {
-            const sh = todayMetrics?.sleep_hours;
-            return sh != null && sh < (cond.threshold as number);
-          }
-
-          default:
-            return false;
+      switch (rule.trigger_type) {
+        case 'training_type_today': {
+          if (!todayTraining) break;
+          const matchType = cond.match_type as string;
+          matches =
+            todayTraining.planned_type === matchType ||
+            todayTraining.planned_subtype === matchType;
+          if (matches) reasoning = `Schemalagt: ${todayTraining.planned_type} idag.`;
+          break;
         }
-      })
-      .sort((a, b) => b.priority - a.priority);
+
+        case 'time_of_day': {
+          const hour = new Date().getHours();
+          if (cond.period === 'morning' && hour >= 5 && hour < 10) {
+            matches = true;
+            reasoning = 'Morgontips för din start.';
+          } else if (cond.period === 'evening' && hour >= 17 && hour < 22) {
+            matches = true;
+            reasoning = 'Kvällstips för återhämtning.';
+          }
+          break;
+        }
+
+        case 'days_to_goal': {
+          if (!goalDate) break;
+          const daysLeft = Math.ceil(
+            (new Date(goalDate).getTime() - Date.now()) / 86400000,
+          );
+          const threshold = cond.threshold as number;
+          const op = cond.operator as string;
+          if (op === '<=') matches = daysLeft <= threshold;
+          else if (op === '>=') matches = daysLeft >= threshold;
+          else if (op === '<') matches = daysLeft < threshold;
+          else if (op === '>') matches = daysLeft > threshold;
+          if (matches) reasoning = `${daysLeft} dagar kvar till målet.`;
+          break;
+        }
+
+        case 'always':
+          matches = true;
+          break;
+
+        case 'body_battery_low': {
+          const bb = todayMetrics?.body_battery;
+          matches = bb != null && bb < (cond.threshold as number);
+          if (matches) reasoning = `Body battery: ${todayMetrics!.body_battery} – kroppen signalerar vila.`;
+          break;
+        }
+
+        case 'body_battery_high': {
+          const bb = todayMetrics?.body_battery;
+          matches = bb != null && bb >= (cond.threshold as number);
+          if (matches) reasoning = `Body battery: ${todayMetrics!.body_battery} – du är laddad.`;
+          break;
+        }
+
+        case 'sleep_deficit': {
+          const sh = todayMetrics?.sleep_hours;
+          matches = sh != null && sh < (cond.threshold as number);
+          if (matches)
+            reasoning = `Sömn: ${todayMetrics!.sleep_hours}h – under rekommenderade ${cond.threshold as number}h.`;
+          break;
+        }
+
+        default:
+          break;
+      }
+
+      if (matches) result.push(reasoning != null ? { ...rule, reasoning } : { ...rule });
+    }
+
+    return result.sort((a, b) => b.priority - a.priority);
   }, [rules, profile, todayTraining, todayMetrics]);
 
   return { insights, loading };

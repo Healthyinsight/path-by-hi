@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { KnowledgeRule } from '@/hooks/useInsights';
+import type { InsightWithReason } from '@/hooks/useInsights';
 
 interface FormatContext {
   user_name: string;
@@ -12,9 +12,9 @@ interface FormatContext {
 }
 
 export async function formatInsights(
-  insights: KnowledgeRule[],
+  insights: InsightWithReason[],
   context: FormatContext,
-): Promise<KnowledgeRule[]> {
+): Promise<InsightWithReason[]> {
   if (insights.length === 0) return insights;
 
   const { data, error } = await supabase.functions.invoke('format-insights', {
