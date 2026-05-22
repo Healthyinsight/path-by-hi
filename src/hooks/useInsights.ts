@@ -22,13 +22,21 @@ export interface KnowledgeRule {
 
 const fmtDate = (d: Date) => d.toISOString().split('T')[0];
 
+interface TodayMetrics {
+  body_battery: number | null;
+  sleep_hours: number | null;
+  sleep_quality_score: number | null;
+  hrv_rmssd: number | null;
+}
+
 export function useInsights(profile: UserProfile | null) {
   const { user } = useAuth();
   const [rules, setRules] = useState<KnowledgeRule[]>([]);
   const [todayTraining, setTodayTraining] = useState<{ planned_type: string; planned_subtype: string | null } | null>(null);
+  const [todayMetrics, setTodayMetrics] = useState<TodayMetrics | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch rules + today's training in parallel
+  // Fetch rules + today's training + today's resolved metrics in parallel
   useEffect(() => {
     if (!user) { setLoading(false); return; }
 
@@ -45,9 +53,16 @@ export function useInsights(profile: UserProfile | null) {
         .eq('user_id', user.id)
         .eq('date', today)
         .maybeSingle(),
-    ]).then(([rulesRes, trainingRes]) => {
+      (supabase as any)
+        .from('daily_metrics_resolved')
+        .select('body_battery, sleep_hours, sleep_quality_score, hrv_rmssd')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .maybeSingle(),
+    ]).then(([rulesRes, trainingRes, metricsRes]) => {
       if (rulesRes.data) setRules(rulesRes.data as unknown as KnowledgeRule[]);
       if (trainingRes.data) setTodayTraining(trainingRes.data);
+      if (metricsRes.data) setTodayMetrics(metricsRes.data as TodayMetrics);
       setLoading(false);
     });
   }, [user]);
@@ -105,20 +120,27 @@ export function useInsights(profile: UserProfile | null) {
           case 'always':
             return true;
 
-          // Future Garmin-driven triggers — ready for when data flows in
-          // case 'hrv_drop':
-          // case 'sleep_deficit':
-          // case 'body_battery_low':
-          // case 'vo2max_change':
-          // case 'weight_trend':
-          //   return false; // skip until body_metrics data available
+          case 'body_battery_low': {
+            const bb = todayMetrics?.body_battery;
+            return bb != null && bb < (cond.threshold as number);
+          }
+
+          case 'body_battery_high': {
+            const bb = todayMetrics?.body_battery;
+            return bb != null && bb >= (cond.threshold as number);
+          }
+
+          case 'sleep_deficit': {
+            const sh = todayMetrics?.sleep_hours;
+            return sh != null && sh < (cond.threshold as number);
+          }
 
           default:
             return false;
         }
       })
       .sort((a, b) => b.priority - a.priority);
-  }, [rules, profile, todayTraining]);
+  }, [rules, profile, todayTraining, todayMetrics]);
 
   return { insights, loading };
 }
