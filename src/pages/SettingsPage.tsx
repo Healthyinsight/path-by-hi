@@ -20,6 +20,7 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { toast } from 'sonner';
 import i18n from '@/i18n/config';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 const PHASES = ['base', 'build', 'peak', 'taper'];
 
@@ -42,6 +43,7 @@ export default function SettingsPage() {
     goal_date: '',
     goal_emoji: '🏁',
   });
+  const [showCountdown, setShowCountdown] = useState(true);
   const [body, setBody] = useState<{
     weight: string;
     height_cm: string;
@@ -72,6 +74,10 @@ export default function SettingsPage() {
       });
     }
   }, [goals]);
+
+  useEffect(() => {
+    if (userProfile) setShowCountdown(userProfile.show_race_countdown !== false);
+  }, [userProfile]);
 
   useEffect(() => {
     if (!userProfile) return;
@@ -156,6 +162,7 @@ export default function SettingsPage() {
       profilePatch: {
         ...goalPayload,
         display_name: displayName,
+        show_race_countdown: showCountdown,
       },
     });
 
@@ -454,6 +461,10 @@ export default function SettingsPage() {
                 <Label className="text-xs">{t('settings.emoji')}</Label>
                 <Input value={goal.goal_emoji} onChange={(e) => setGoal((g) => ({ ...g, goal_emoji: e.target.value }))} placeholder="🏁" />
               </div>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-3 py-2">
+              <Label className="text-xs">Visa nedräkning till mål</Label>
+              <Switch checked={showCountdown} onCheckedChange={setShowCountdown} />
             </div>
           </div>
         </div>
