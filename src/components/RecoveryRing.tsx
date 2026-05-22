@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { getTodayRecovery, type RecoveryData } from '@/data/mockRecoveryData';
+import { getTodayRecovery } from '@/data/mockRecoveryData';
+import type { RecoveryData } from '@/lib/recoveryScore';
 
 const RING_SIZE = 220;
 const STROKE = 10;
@@ -32,9 +33,16 @@ const PLACEHOLDER_MUTED = '#B0B8BF';
 
 export type RecoveryRingVariant = 'live' | 'placeholder';
 
-export function RecoveryRing({ variant = 'live' }: { variant?: RecoveryRingVariant }) {
+export function RecoveryRing({ variant = 'live', data }: { variant?: RecoveryRingVariant; data?: RecoveryData | null }) {
   const { t } = useTranslation();
-  const recovery = getTodayRecovery();
+  const mockRecovery = getTodayRecovery();
+  const recovery: RecoveryData = data ?? {
+    ...mockRecovery,
+    sleepHours: mockRecovery.sleepHours,
+    hrvMs: mockRecovery.hrvMs,
+    bodyBattery: mockRecovery.bodyBattery,
+  };
+  const isRealData = data != null;
   const [animatedScore, setAnimatedScore] = useState(0);
   const isPlaceholder = variant === 'placeholder';
   const pct = isPlaceholder ? 0 : recovery.score / 100;
@@ -221,13 +229,13 @@ export function RecoveryRing({ variant = 'live' }: { variant?: RecoveryRingVaria
       {/* Metric pills */}
       <div className="flex gap-2 relative z-10">
         <span className="metric-pill">
-          {t('recovery.sleep')} {recovery.sleepHours}h
+          {t('recovery.sleep')} {recovery.sleepHours != null ? `${recovery.sleepHours}h` : '—'}
         </span>
         <span className="metric-pill">
-          {t('recovery.hrv')} {recovery.hrvMs}ms
+          {t('recovery.hrv')} {recovery.hrvMs != null ? `${recovery.hrvMs}ms` : '—'}
         </span>
         <span className="metric-pill">
-          {t('recovery.energy')} {recovery.bodyBattery}
+          {t('recovery.energy')} {recovery.bodyBattery ?? '—'}
         </span>
       </div>
 
@@ -243,18 +251,20 @@ export function RecoveryRing({ variant = 'live' }: { variant?: RecoveryRingVaria
         {statusEmoji[recovery.status]} {t(`recovery.status.${recovery.status}`)}
       </p>
 
-      {/* Mock data label */}
-      <p
-        className="text-center relative z-10"
-        style={{
-          fontFamily: "'Merriweather Sans', sans-serif",
-          fontSize: '11px',
-          fontStyle: 'italic',
-          color: '#B0B8BF',
-        }}
-      >
-        {t('recovery.mockDisclaimer')}
-      </p>
+      {/* Mock data label — hidden when real data is provided */}
+      {!isRealData && (
+        <p
+          className="text-center relative z-10"
+          style={{
+            fontFamily: "'Merriweather Sans', sans-serif",
+            fontSize: '11px',
+            fontStyle: 'italic',
+            color: '#B0B8BF',
+          }}
+        >
+          {t('recovery.mockDisclaimer')}
+        </p>
+      )}
     </div>
   );
 }
