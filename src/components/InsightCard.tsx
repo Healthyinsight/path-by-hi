@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Moon, Dumbbell, Utensils } from 'lucide-react';
-import type { KnowledgeRule } from '@/hooks/useInsights';
+import type { InsightWithReason } from '@/hooks/useInsights';
 
 const severityStyles: Record<string, { border: string; bg: string; iconColor: string }> = {
   positive: { border: '#839F8D', bg: 'rgba(131, 159, 141, 0.05)', iconColor: '#839F8D' },
@@ -15,7 +15,7 @@ const categoryIcons: Record<string, React.ElementType> = {
   nutrition: Utensils,
 };
 
-export function InsightCard({ rule, index = 0 }: { rule: KnowledgeRule; index?: number }) {
+export function InsightCard({ rule, index = 0 }: { rule: InsightWithReason; index?: number }) {
   const { t } = useTranslation();
   const s = severityStyles[rule.severity] || severityStyles.info;
   const Icon = categoryIcons[rule.category] || Dumbbell;
@@ -45,6 +45,19 @@ export function InsightCard({ rule, index = 0 }: { rule: KnowledgeRule; index?: 
       <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '14px', color: '#3D4F58', lineHeight: 1.55 }}>
         {rule.insight_body}
       </p>
+
+      {/* Reasoning */}
+      {rule.reasoning && (
+        <p style={{
+          fontFamily: "'Merriweather Sans', sans-serif",
+          fontSize: '12px',
+          color: '#8E9BA3',
+          borderTop: '1px solid rgba(0,0,0,0.06)',
+          paddingTop: '6px',
+        }}>
+          ↳ {rule.reasoning}
+        </p>
+      )}
 
       {/* Action */}
       {rule.action_text && (
