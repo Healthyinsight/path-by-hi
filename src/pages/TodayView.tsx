@@ -27,6 +27,7 @@ import { Check, Calendar, ChefHat, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 import { getNutritionTargets } from '@/lib/nutritionEngine';
 import { addMetrics, getLatestMetrics, getMetricsHistory } from '@/services/metricsService';
+import { addDailyMetric, getResolvedMetrics, type DailyMetricsRow } from '@/services/dailyMetricsService';
 
 /* ---- helpers ---- */
 const fmtDate = (d: Date) => d.toISOString().split('T')[0];
@@ -110,6 +111,10 @@ export default function TodayView() {
   const [savedMoodToday, setSavedMoodToday] = useState<number | null>(null);
   const [showRecoveryMoodCard, setShowRecoveryMoodCard] = useState(false);
   const [showInlineMoodChoices, setShowInlineMoodChoices] = useState(false);
+  const [todayDailyMetrics, setTodayDailyMetrics] = useState<DailyMetricsRow | null>(null);
+  const [morningCheckInOpen, setMorningCheckInOpen] = useState(false);
+  const [sleepHours, setSleepHours] = useState(7.5);
+  const [energyLevel, setEnergyLevel] = useState<number | null>(null);
 
   const insightsLimited = insights.slice(0, 2);
 
@@ -218,6 +223,11 @@ export default function TodayView() {
   }, [user, today]);
 
   useEffect(() => {
+    if (!user) { setTodayDailyMetrics(null); return; }
+    void getResolvedMetrics(user.id, today).then(({ data }) => setTodayDailyMetrics(data));
+  }, [user, today]);
+
+  useEffect(() => {
     if (!user) {
       setShowRecoveryMoodCard(false);
       return;
@@ -267,6 +277,19 @@ export default function TodayView() {
       toast.error(t('today.toastMoodFail'));
     }
     setMoodDialogOpen(false);
+  };
+
+  const saveMorningCheckIn = async () => {
+    if (!user) return;
+    const { error } = await addDailyMetric(user.id, today, {
+      sleep_hours: sleepHours,
+      sleep_quality_score: energyLevel ?? undefined,
+    });
+    if (error) { toast.error('Kunde inte spara — försök igen.'); return; }
+    const { data } = await getResolvedMetrics(user.id, today);
+    setTodayDailyMetrics(data);
+    setMorningCheckInOpen(false);
+    toast.success('Morgonstatus sparad!');
   };
 
   const handleQuickMoodSelect = async (moodValue: number) => {
@@ -562,6 +585,150 @@ export default function TodayView() {
                           {m.label}
                         </button>
                       ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
+
+        {/* Morning Check-In */}
+        <AnimatePresence>
+          {todayDailyMetrics?.sleep_hours != null ? (
+            <motion.section
+              key="morning-logged"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="mb-4"
+            >
+              <div className="flex items-center gap-3 rounded-xl border border-[#E8EDEF] bg-white/60 px-4 py-3">
+                <span style={{ fontSize: '20px' }}>🌙</span>
+                <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', color: '#3D4F58' }}>
+                  Sömn: <span className="font-data-num font-semibold">{todayDailyMetrics.sleep_hours}h</span>
+                  {todayDailyMetrics.sleep_quality_score != null && (
+                    <span className="ml-2">{['😫', '😕', '😐', '😊', '🚀'][todayDailyMetrics.sleep_quality_score - 1]}</span>
+                  )}
+                </p>
+              </div>
+            </motion.section>
+          ) : (
+            <motion.section
+              key="morning-checkin"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="mb-4"
+            >
+              <div className="rounded-xl bg-white p-4 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span style={{ fontSize: '22px' }}>🌙</span>
+                  <h3 style={{ fontFamily: "'Merriweather', serif", fontSize: '16px', fontWeight: 600, color: '#1A2B32' }}>
+                    Morgonstatus
+                  </h3>
+                </div>
+                <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '14px', color: '#6B7B84', marginTop: '6px' }}>
+                  Logga sömn och energi för bättre coachning.
+                </p>
+                <AnimatePresence>
+                  {morningCheckInOpen ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="mt-3 space-y-4"
+                    >
+                      {/* Sleep hours */}
+                      <div>
+                        <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '12px', color: '#6B7B84', marginBottom: '6px' }}>
+                          Sömntimmar
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setSleepHours((h) => Math.max(4, Math.round((h - 0.5) * 10) / 10))}
+                            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E0E7EB] text-lg font-bold text-[#5095AC]"
+                          >
+                            −
+                          </button>
+                          <span className="font-data-num w-12 text-center text-xl font-semibold" style={{ color: '#1A2B32' }}>
+                            {sleepHours}h
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSleepHours((h) => Math.min(12, Math.round((h + 0.5) * 10) / 10))}
+                            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E0E7EB] text-lg font-bold text-[#5095AC]"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Energy level */}
+                      <div>
+                        <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '12px', color: '#6B7B84', marginBottom: '6px' }}>
+                          Energinivå
+                        </p>
+                        <div className="flex gap-2">
+                          {[
+                            { value: 1, emoji: '😫' },
+                            { value: 2, emoji: '😕' },
+                            { value: 3, emoji: '😐' },
+                            { value: 4, emoji: '😊' },
+                            { value: 5, emoji: '🚀' },
+                          ].map((e) => (
+                            <button
+                              key={e.value}
+                              type="button"
+                              onClick={() => setEnergyLevel(e.value)}
+                              className="flex h-10 w-10 items-center justify-center rounded-full border text-lg transition-colors"
+                              style={{
+                                borderColor: energyLevel === e.value ? '#5095AC' : '#E0E7EB',
+                                backgroundColor: energyLevel === e.value ? 'rgba(80,149,172,0.1)' : '#FFFFFF',
+                              }}
+                            >
+                              {e.emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => void saveMorningCheckIn()}
+                          size="sm"
+                          className="touch-target flex-1"
+                          style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontWeight: 600 }}
+                        >
+                          Spara
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="touch-target"
+                          onClick={() => setMorningCheckInOpen(false)}
+                          style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif" }}
+                        >
+                          Avbryt
+                        </Button>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                      <Button
+                        onClick={() => setMorningCheckInOpen(true)}
+                        size="sm"
+                        className="touch-target mt-3"
+                        style={{
+                          borderRadius: '9999px',
+                          backgroundColor: '#5095AC',
+                          fontFamily: "'Merriweather Sans', sans-serif",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Logga morgonstatus
+                      </Button>
                     </motion.div>
                   )}
                 </AnimatePresence>
