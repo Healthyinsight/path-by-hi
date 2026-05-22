@@ -221,6 +221,32 @@ export default function Dashboard() {
     [t],
   );
 
+  const weeklyCompliance = useMemo(() => {
+    const result = [];
+    for (let i = 3; i >= 0; i--) {
+      const ref = new Date();
+      const dow = ref.getDay();
+      const monday = new Date(ref);
+      monday.setDate(ref.getDate() - (dow + 6) % 7 - i * 7);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const startStr = fmtDate(monday);
+      const endStr = fmtDate(sunday);
+      const entries = allSchedule.filter(
+        (s) => s.date >= startStr && s.date <= endStr && s.planned_type !== 'rest',
+      );
+      const planned = entries.length;
+      const completed = entries.filter((s) => s.completed).length;
+      result.push({
+        label: i === 0 ? 'Nu' : `-${i}v`,
+        planned,
+        completed,
+        pct: planned > 0 ? Math.round((completed / planned) * 100) : 0,
+      });
+    }
+    return result;
+  }, [allSchedule]);
+
   const chartData = weekDates.map((date, i) => {
     const dateStr = fmtDate(date);
     const entry = weekNutrition.find((n) => n.date === dateStr);
@@ -359,6 +385,35 @@ export default function Dashboard() {
         </div>
         <p className="text-center text-xs text-muted-foreground">{t('dashboard.weekSummary', { completed: completedCount, total: totalPlanned })}</p>
       </div>
+
+      {/* Weekly compliance chart */}
+      {allSchedule.length > 0 && (
+        <div className="card-athletic mb-4">
+          <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Veckoföljsamhet</p>
+          <ResponsiveContainer width="100%" height={100}>
+            <BarChart data={weeklyCompliance} barGap={4}>
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'hsl(200 12% 50%)' }} axisLine={false} tickLine={false} />
+              <YAxis hide domain={[0, 100]} />
+              <Bar dataKey="pct" radius={[4, 4, 0, 0]} barSize={28} label={{ position: 'top', fontSize: 10, fill: 'hsl(200 12% 50%)', formatter: (v: number) => v > 0 ? `${v}%` : '' }}>
+                {weeklyCompliance.map((entry, i) => (
+                  <Cell
+                    key={i}
+                    fill={
+                      entry.planned === 0 ? 'hsl(207 22% 91%)'
+                      : entry.pct >= 80 ? 'hsl(145 35% 55%)'
+                      : entry.pct >= 60 ? 'hsl(40 80% 60%)'
+                      : 'hsl(0 65% 60%)'
+                    }
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="mt-1 text-center text-xs text-muted-foreground">
+            {completedCount}/{totalPlanned} genomförda denna vecka
+          </p>
+        </div>
+      )}
 
       {/* Quick stats */}
       <div className="mb-4 grid grid-cols-3 gap-3">
