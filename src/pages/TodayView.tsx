@@ -13,6 +13,7 @@ import { RaceCountdownArc } from '@/components/RaceCountdownArc';
 import { InsightCard } from '@/components/InsightCard';
 import { useInsights } from '@/hooks/useInsights';
 import { getTodayRecovery, getStreakMilestone } from '@/data/mockRecoveryData';
+import { calculateRecoveryScore } from '@/lib/recoveryScore';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -107,7 +108,16 @@ export default function TodayView() {
 
   const { insights, loading: loadingInsights } = useInsights(profile);
   const [formattedInsights, setFormattedInsights] = useState<typeof insights | null>(null);
-  const recovery = useMemo(() => getTodayRecovery(), []);
+  const mockRecovery = useMemo(() => getTodayRecovery(), []);
+  const recovery = useMemo(
+    () => calculateRecoveryScore({
+      body_battery: todayDailyMetrics?.body_battery ?? null,
+      sleep_hours: todayDailyMetrics?.sleep_hours ?? null,
+      hrv_rmssd: todayDailyMetrics?.hrv_rmssd ?? null,
+      rhr: todayDailyMetrics?.rhr ?? null,
+    }),
+    [todayDailyMetrics],
+  );
   const [moodDialogOpen, setMoodDialogOpen] = useState(false);
   const [moodSliderValue, setMoodSliderValue] = useState([3]);
   const [savedMoodToday, setSavedMoodToday] = useState<number | null>(null);
@@ -342,7 +352,7 @@ export default function TodayView() {
     const ok = await markWorkoutCompleted(workout.id);
     if (ok) {
       fireConfetti();
-      const streak = recovery.currentStreak + 1;
+      const streak = mockRecovery.currentStreak + 1;
       const milestone = getStreakMilestone(streak);
       if (milestone === 30) toast.success(t('streak.m30'));
       else if (milestone === 14) toast.success(t('streak.m14'));
@@ -467,8 +477,8 @@ export default function TodayView() {
             <h1 style={{ fontFamily: "'Merriweather', serif", fontSize: '24px', fontWeight: 700, color: '#1A2B32' }}>
               {greeting}
             </h1>
-            {recovery.currentStreak > 0 && (
-              <span className="streak-pill">🔥 {t('today.streakDays', { count: recovery.currentStreak })}</span>
+            {mockRecovery.currentStreak > 0 && (
+              <span className="streak-pill">🔥 {t('today.streakDays', { count: mockRecovery.currentStreak })}</span>
             )}
           </div>
           <p style={{ fontFamily: "'Merriweather Sans', sans-serif", fontSize: '14px', color: '#6B7B84', marginTop: '4px', textTransform: 'capitalize' }}>
@@ -845,7 +855,7 @@ export default function TodayView() {
         {/* 2. Recovery Ring — only render when live Garmin data exists. No empty rings/skeletons. */}
         {hasGarminRecoveryData && (
           <motion.section variants={cardVariant(1)} initial="hidden" animate="visible" className="mb-4">
-            <RecoveryRing variant="live" />
+            <RecoveryRing variant="live" data={recovery} />
           </motion.section>
         )}
 

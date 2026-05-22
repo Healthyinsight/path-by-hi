@@ -221,13 +221,13 @@ export default function Dashboard() {
     [t],
   );
 
-  const weeklyCompliance = useMemo(() => {
-    const result = [];
-    for (let i = 3; i >= 0; i--) {
-      const ref = new Date();
-      const dow = ref.getDay();
+  const { weeklyCompliance, weekStreak } = useMemo(() => {
+    const ref = new Date();
+    const dow = ref.getDay();
+
+    const buildWeek = (weeksAgo: number) => {
       const monday = new Date(ref);
-      monday.setDate(ref.getDate() - (dow + 6) % 7 - i * 7);
+      monday.setDate(ref.getDate() - (dow + 6) % 7 - weeksAgo * 7);
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
       const startStr = fmtDate(monday);
@@ -237,14 +237,26 @@ export default function Dashboard() {
       );
       const planned = entries.length;
       const completed = entries.filter((s) => s.completed).length;
-      result.push({
-        label: i === 0 ? 'Nu' : `-${i}v`,
-        planned,
-        completed,
-        pct: planned > 0 ? Math.round((completed / planned) * 100) : 0,
-      });
+      return { planned, completed, pct: planned > 0 ? Math.round((completed / planned) * 100) : 0 };
+    };
+
+    // Streak: count consecutive past weeks (skip current) with ≥80 % completion
+    let streak = 0;
+    for (let w = 1; w <= 12; w++) {
+      const { planned, pct } = buildWeek(w);
+      if (planned === 0) continue;
+      if (pct >= 80) streak++;
+      else break;
     }
-    return result;
+
+    // Chart: last 4 weeks
+    const result = [];
+    for (let i = 3; i >= 0; i--) {
+      const { planned, completed, pct } = buildWeek(i);
+      result.push({ label: i === 0 ? 'Nu' : `-${i}v`, planned, completed, pct });
+    }
+
+    return { weeklyCompliance: result, weekStreak: streak };
   }, [allSchedule]);
 
   const chartData = weekDates.map((date, i) => {
@@ -389,7 +401,20 @@ export default function Dashboard() {
       {/* Weekly compliance chart */}
       {allSchedule.length > 0 && (
         <div className="card-athletic mb-4">
-          <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Veckoföljsamhet</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Veckoföljsamhet</p>
+            {weekStreak > 0 && (
+              <span
+                className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                style={{
+                  background: weekStreak >= 8 ? 'rgba(131,159,141,0.15)' : weekStreak >= 4 ? 'rgba(232,168,56,0.15)' : 'rgba(80,149,172,0.10)',
+                  color: weekStreak >= 8 ? '#839F8D' : weekStreak >= 4 ? '#C8860A' : '#5095AC',
+                }}
+              >
+                🔥 {weekStreak} {weekStreak === 1 ? 'vecka' : 'veckor'} i rad ≥80 %
+              </span>
+            )}
+          </div>
           <ResponsiveContainer width="100%" height={100}>
             <BarChart data={weeklyCompliance} barGap={4}>
               <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'hsl(200 12% 50%)' }} axisLine={false} tickLine={false} />
