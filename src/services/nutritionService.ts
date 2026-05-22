@@ -46,11 +46,13 @@ export async function generateForToday(userId: string): Promise<{ error: Postgre
       {
         user_id: userId,
         date: dateStr,
-        training_type: schedule?.planned_type ?? 'rest',
-        target_kcal: targets.target_kcal,
-        target_protein: targets.target_protein,
-        target_carbs: targets.target_carbs,
-        target_fat: targets.target_fat,
+        training_type:   schedule?.planned_type    ?? 'rest',
+        planned_subtype: schedule?.planned_subtype ?? null,
+        planned_sport:   schedule?.planned_sport   ?? null,
+        target_kcal:     targets.target_kcal,
+        target_protein:  targets.target_protein,
+        target_carbs:    targets.target_carbs,
+        target_fat:      targets.target_fat,
       },
       { onConflict: 'user_id,date' },
     );

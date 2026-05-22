@@ -48,11 +48,15 @@ export default function Nutrition() {
       supabase.from('nutrition_plan').select('*').eq('user_id', user.id).eq('date', today).single(),
     ]);
     setSchedule(schedData);
-    if (planData) { setPlan(planData); }
-    else {
+
+    const currentType = schedData?.planned_type ?? 'rest';
+    const needsRegen = !planData || planData.training_type !== currentType;
+    if (needsRegen) {
       await generateForToday(user.id);
-      const { data: newPlan } = await supabase.from('nutrition_plan').select('*').eq('user_id', user.id).eq('date', today).single();
-      if (newPlan) setPlan(newPlan);
+      const { data: freshPlan } = await supabase.from('nutrition_plan').select('*').eq('user_id', user.id).eq('date', today).single();
+      setPlan(freshPlan ?? planData);
+    } else {
+      setPlan(planData);
     }
   };
 
@@ -99,15 +103,24 @@ export default function Nutrition() {
   };
 
   const meals = getMeals();
-  const targets = getNutritionTargets(schedule?.planned_type, schedule?.planned_subtype);
+  const staticTargets = getNutritionTargets(schedule?.planned_type, schedule?.planned_subtype);
+  const targets = {
+    kcal:     plan?.target_kcal     ?? staticTargets.kcal,
+    protein:  plan?.target_protein  ?? staticTargets.protein,
+    carbs:    plan?.target_carbs    ?? staticTargets.carbs,
+    fat:      plan?.target_fat      ?? staticTargets.fat,
+    balance:  staticTargets.balance,
+    tipKey:   staticTargets.tipKey,
+  };
   const trainingLabel = getTrainingLabelI18n(t, schedule?.planned_type, schedule?.planned_subtype, schedule?.planned_sport);
-  const suggestions = getMealSuggestions(schedule?.planned_subtype, i18n.language === 'en' ? 'en' : 'sv');
+  const activeSubtype = (plan?.planned_subtype as string | null) ?? schedule?.planned_subtype;
+  const suggestions = getMealSuggestions(activeSubtype, i18n.language === 'en' ? 'en' : 'sv');
 
   const remaining = {
-    kcal: Math.max(0, (plan?.target_kcal || targets.kcal) - (plan?.actual_kcal || 0)),
-    protein: Math.max(0, (plan?.target_protein || targets.protein) - (plan?.actual_protein || 0)),
-    carbs: Math.max(0, (plan?.target_carbs || targets.carbs) - (plan?.actual_carbs || 0)),
-    fat: Math.max(0, (plan?.target_fat || targets.fat) - (plan?.actual_fat || 0)),
+    kcal:    Math.max(0, targets.kcal    - (plan?.actual_kcal    || 0)),
+    protein: Math.max(0, targets.protein - (plan?.actual_protein || 0)),
+    carbs:   Math.max(0, targets.carbs   - (plan?.actual_carbs   || 0)),
+    fat:     Math.max(0, targets.fat     - (plan?.actual_fat     || 0)),
   };
 
   const hour = new Date().getHours();
@@ -127,16 +140,16 @@ export default function Nutrition() {
       <div className="card-athletic mb-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="flex justify-center">
-            <MacroRing label={t('today.calories')} current={plan?.actual_kcal || 0} target={plan?.target_kcal || targets.kcal} unit="" color="hsl(var(--primary))" size={90} />
+            <MacroRing label={t('today.calories')} current={plan?.actual_kcal || 0} target={targets.kcal} unit="" color="hsl(var(--primary))" size={90} />
           </div>
           <div className="flex justify-center">
-            <MacroRing label={t('today.protein')} current={plan?.actual_protein || 0} target={plan?.target_protein || targets.protein} unit="g" color="hsl(var(--nutrition-protein))" size={90} />
+            <MacroRing label={t('today.protein')} current={plan?.actual_protein || 0} target={targets.protein} unit="g" color="hsl(var(--nutrition-protein))" size={90} />
           </div>
           <div className="flex justify-center">
-            <MacroRing label={t('today.carbs')} current={plan?.actual_carbs || 0} target={plan?.target_carbs || targets.carbs} unit="g" color="hsl(var(--nutrition-carbs))" size={90} />
+            <MacroRing label={t('today.carbs')} current={plan?.actual_carbs || 0} target={targets.carbs} unit="g" color="hsl(var(--nutrition-carbs))" size={90} />
           </div>
           <div className="flex justify-center">
-            <MacroRing label={t('today.fat')} current={plan?.actual_fat || 0} target={plan?.target_fat || targets.fat} unit="g" color="hsl(var(--nutrition-fat))" size={90} />
+            <MacroRing label={t('today.fat')} current={plan?.actual_fat || 0} target={targets.fat} unit="g" color="hsl(var(--nutrition-fat))" size={90} />
           </div>
         </div>
       </div>

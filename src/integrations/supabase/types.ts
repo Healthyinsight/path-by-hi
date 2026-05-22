@@ -313,6 +313,8 @@ export type Database = {
           date: string
           id: string
           meals: Json | null
+          planned_sport: string | null
+          planned_subtype: string | null
           target_carbs: number | null
           target_fat: number | null
           target_kcal: number | null
@@ -329,6 +331,8 @@ export type Database = {
           date: string
           id?: string
           meals?: Json | null
+          planned_sport?: string | null
+          planned_subtype?: string | null
           target_carbs?: number | null
           target_fat?: number | null
           target_kcal?: number | null
@@ -345,6 +349,8 @@ export type Database = {
           date?: string
           id?: string
           meals?: Json | null
+          planned_sport?: string | null
+          planned_subtype?: string | null
           target_carbs?: number | null
           target_fat?: number | null
           target_kcal?: number | null
