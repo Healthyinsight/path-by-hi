@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { getNutritionTargets } from '@/lib/nutritionEngine';
 import { addMetrics, getLatestMetrics, getMetricsHistory } from '@/services/metricsService';
 import { addDailyMetric, getResolvedMetrics, type DailyMetricsRow } from '@/services/dailyMetricsService';
+import { formatInsights } from '@/services/insightFormatterService';
 
 /* ---- helpers ---- */
 const fmtDate = (d: Date) => d.toISOString().split('T')[0];
@@ -105,6 +106,7 @@ export default function TodayView() {
   const [loadingGarminBattery, setLoadingGarminBattery] = useState(true);
 
   const { insights, loading: loadingInsights } = useInsights(profile);
+  const [formattedInsights, setFormattedInsights] = useState<typeof insights | null>(null);
   const recovery = useMemo(() => getTodayRecovery(), []);
   const [moodDialogOpen, setMoodDialogOpen] = useState(false);
   const [moodSliderValue, setMoodSliderValue] = useState([3]);
@@ -116,7 +118,7 @@ export default function TodayView() {
   const [sleepHours, setSleepHours] = useState(7.5);
   const [energyLevel, setEnergyLevel] = useState<number | null>(null);
 
-  const insightsLimited = insights.slice(0, 2);
+  const insightsLimited = (formattedInsights ?? insights).slice(0, 2);
 
   // True only when at least one Garmin field is non-null within the last 7 days
   const hasGarminRecoveryData = useMemo(() => {
@@ -226,6 +228,26 @@ export default function TodayView() {
     if (!user) { setTodayDailyMetrics(null); return; }
     void getResolvedMetrics(user.id, today).then(({ data }) => setTodayDailyMetrics(data));
   }, [user, today]);
+
+  // LLM-formatter: personalise top insights via Edge Function (degrades gracefully if key missing)
+  const insightIds = useMemo(() => insights.map((i) => i.id).join(','), [insights]);
+  useEffect(() => {
+    if (!user || !insightIds) { setFormattedInsights(null); return; }
+    const top = insights.slice(0, 2);
+    void formatInsights(top, {
+      user_name: getUserFirstName(user, profile) || 'Athlete',
+      archetype: profile?.archetype ?? 'wellness',
+      training_phase: (profile as any)?.training_phase ?? null,
+      today_training: workout
+        ? { type: workout.planned_type, subtype: workout.planned_subtype ?? null, sport: workout.planned_sport ?? null }
+        : null,
+      today_metrics: todayDailyMetrics
+        ? { body_battery: todayDailyMetrics.body_battery, sleep_hours: todayDailyMetrics.sleep_hours }
+        : null,
+      days_to_goal: daysLeft || null,
+      goal_name: profile?.goal_name ?? null,
+    }).then((result) => setFormattedInsights(result));
+  }, [insightIds, user?.id, todayDailyMetrics?.body_battery, todayDailyMetrics?.sleep_hours]);
 
   useEffect(() => {
     if (!user) {
