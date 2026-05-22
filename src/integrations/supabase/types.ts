@@ -85,15 +85,15 @@ export type Database = {
           body_fat_pct: number | null
           created_at: string
           date: string
+          garmin_measured_at: string | null
           hrv_rmssd: number | null
           id: string
+          mood_score: number | null
           resting_hr: number | null
           sleep_hours: number | null
           sleep_quality_score: number | null
           source: string | null
           stress_level: number | null
-          mood_score: number | null
-          garmin_measured_at: string | null
           user_id: string
           vo2max_bike: number | null
           vo2max_run: number | null
@@ -104,15 +104,15 @@ export type Database = {
           body_fat_pct?: number | null
           created_at?: string
           date: string
+          garmin_measured_at?: string | null
           hrv_rmssd?: number | null
           id?: string
+          mood_score?: number | null
           resting_hr?: number | null
           sleep_hours?: number | null
           sleep_quality_score?: number | null
           source?: string | null
           stress_level?: number | null
-          mood_score?: number | null
-          garmin_measured_at?: string | null
           user_id: string
           vo2max_bike?: number | null
           vo2max_run?: number | null
@@ -123,15 +123,15 @@ export type Database = {
           body_fat_pct?: number | null
           created_at?: string
           date?: string
+          garmin_measured_at?: string | null
           hrv_rmssd?: number | null
           id?: string
+          mood_score?: number | null
           resting_hr?: number | null
           sleep_hours?: number | null
           sleep_quality_score?: number | null
           source?: string | null
           stress_level?: number | null
-          mood_score?: number | null
-          garmin_measured_at?: string | null
           user_id?: string
           vo2max_bike?: number | null
           vo2max_run?: number | null
@@ -146,6 +146,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      daily_metrics: {
+        Row: {
+          body_battery: number | null
+          created_at: string
+          date: string
+          hrv_rmssd: number | null
+          raw_payload: Json | null
+          rhr: number | null
+          sleep_hours: number | null
+          sleep_quality_score: number | null
+          source: string
+          steps: number | null
+          user_id: string
+        }
+        Insert: {
+          body_battery?: number | null
+          created_at?: string
+          date: string
+          hrv_rmssd?: number | null
+          raw_payload?: Json | null
+          rhr?: number | null
+          sleep_hours?: number | null
+          sleep_quality_score?: number | null
+          source: string
+          steps?: number | null
+          user_id: string
+        }
+        Update: {
+          body_battery?: number | null
+          created_at?: string
+          date?: string
+          hrv_rmssd?: number | null
+          raw_payload?: Json | null
+          rhr?: number | null
+          sleep_hours?: number | null
+          sleep_quality_score?: number | null
+          source?: string
+          steps?: number | null
+          user_id?: string
+        }
+        Relationships: []
       }
       exercises: {
         Row: {
@@ -174,6 +216,36 @@ export type Database = {
           is_disc_safe?: boolean | null
           muscle_group?: string | null
           name?: string
+        }
+        Relationships: []
+      }
+      garmin_webhook_events: {
+        Row: {
+          dedupe_key: string
+          error: string | null
+          event_type: string
+          id: string
+          payload_json: Json
+          processed_at: string | null
+          received_at: string
+        }
+        Insert: {
+          dedupe_key: string
+          error?: string | null
+          event_type: string
+          id?: string
+          payload_json: Json
+          processed_at?: string | null
+          received_at?: string
+        }
+        Update: {
+          dedupe_key?: string
+          error?: string | null
+          event_type?: string
+          id?: string
+          payload_json?: Json
+          processed_at?: string | null
+          received_at?: string
         }
         Relationships: []
       }
@@ -303,8 +375,8 @@ export type Database = {
           planned_subtype: string | null
           planned_type: string
           source: string | null
-          week_start_date: string | null
           user_id: string
+          week_start_date: string | null
         }
         Insert: {
           activity_id?: string | null
@@ -318,8 +390,8 @@ export type Database = {
           planned_subtype?: string | null
           planned_type: string
           source?: string | null
-          week_start_date?: string | null
           user_id: string
+          week_start_date?: string | null
         }
         Update: {
           activity_id?: string | null
@@ -333,8 +405,8 @@ export type Database = {
           planned_subtype?: string | null
           planned_type?: string
           source?: string | null
-          week_start_date?: string | null
           user_id?: string
+          week_start_date?: string | null
         }
         Relationships: [
           {
@@ -590,10 +662,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      daily_metrics_resolved: {
+        Row: {
+          body_battery: number | null
+          created_at: string | null
+          date: string | null
+          hrv_rmssd: number | null
+          rhr: number | null
+          sleep_hours: number | null
+          sleep_quality_score: number | null
+          source: string | null
+          steps: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      merge_body_battery_from_garmin: {
+        Args: {
+          p_body_battery: number
+          p_date: string
+          p_garmin_measured_at: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
