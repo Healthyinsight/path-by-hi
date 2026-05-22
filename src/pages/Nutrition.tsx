@@ -15,6 +15,7 @@ import {
   getNutritionTargets, getTrainingLabelI18n, getBalanceTextI18n, getMealSuggestions,
   type MealSuggestion,
 } from '@/lib/nutritionEngine';
+import { generateForToday } from '@/services/nutritionService';
 
 interface Meal {
   name: string;
@@ -49,15 +50,8 @@ export default function Nutrition() {
     setSchedule(schedData);
     if (planData) { setPlan(planData); }
     else {
-      const targets = getNutritionTargets(schedData?.planned_type, schedData?.planned_subtype);
-      const trainingType = schedData?.planned_subtype || schedData?.planned_type || 'rest';
-      const { data: newPlan } = await supabase.from('nutrition_plan').insert({
-        user_id: user.id, date: today, training_type: trainingType,
-        target_kcal: targets.kcal, target_protein: targets.protein,
-        target_carbs: targets.carbs, target_fat: targets.fat,
-        actual_kcal: 0, actual_protein: 0, actual_carbs: 0, actual_fat: 0,
-        meals: [] as unknown as Json,
-      }).select().single();
+      await generateForToday(user.id);
+      const { data: newPlan } = await supabase.from('nutrition_plan').select('*').eq('user_id', user.id).eq('date', today).single();
       if (newPlan) setPlan(newPlan);
     }
   };

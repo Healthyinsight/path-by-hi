@@ -6,7 +6,7 @@ import confetti from 'canvas-confetti';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useSchedule } from '@/hooks/useSchedule';
-import { getNutritionPlan } from '@/services/nutritionService';
+import { getNutritionPlan, generateForToday } from '@/services/nutritionService';
 import { BottomNav } from '@/components/BottomNav';
 import { RecoveryRing } from '@/components/RecoveryRing';
 import { RaceCountdownArc } from '@/components/RaceCountdownArc';
@@ -157,7 +157,11 @@ export default function TodayView() {
   useEffect(() => {
     if (!user) return;
     void (async () => {
-      const { data } = await getNutritionPlan(user.id, today);
+      let { data } = await getNutritionPlan(user.id, today);
+      if (!data) {
+        await generateForToday(user.id);
+        ({ data } = await getNutritionPlan(user.id, today));
+      }
       setNutrition(data);
       setLoadingNutrition(false);
     })();
@@ -276,7 +280,7 @@ export default function TodayView() {
     const { error } = await addMetrics(user.id, {
       date: today,
       mood_score: invertedMood,
-    } as any);
+    });
 
     if (error) {
       toast.error(t('today.toastMoodFail'));
