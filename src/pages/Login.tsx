@@ -96,24 +96,6 @@ export default function Login() {
       setErrorKind('invalid');
       return;
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7940/ingest/5309d2c3-1f5a-4838-b83f-6f2c12bebaee', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': 'cf2fbf',
-      },
-      body: JSON.stringify({
-        sessionId: 'cf2fbf',
-        runId: 'initial',
-        hypothesisId: 'H3',
-        location: 'Login.tsx:handleMagicSubmit:beforeSignIn',
-        message: 'Submitting magic link',
-        data: { emailDomain: trimmed.split('@')[1] ?? '' },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion agent log
     setMagicLoading(true);
     setPhase('sending');
     const { error } = await supabase.auth.signInWithOtp({
@@ -124,24 +106,6 @@ export default function Login() {
     if (error) {
       setPhase('idle');
       setErrorKind(classifyAuthError(error as AuthError));
-      // #region agent log
-      fetch('http://127.0.0.1:7940/ingest/5309d2c3-1f5a-4838-b83f-6f2c12bebaee', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': 'cf2fbf',
-        },
-        body: JSON.stringify({
-          sessionId: 'cf2fbf',
-          runId: 'initial',
-          hypothesisId: 'H3',
-          location: 'Login.tsx:handleMagicSubmit:error',
-          message: 'Magic link failed',
-          data: { status: (error as AuthError).status ?? null },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion agent log
       return;
     }
     writeStoredEmail(trimmed);
@@ -186,24 +150,6 @@ export default function Login() {
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
-    // #region agent log
-    fetch('http://127.0.0.1:7940/ingest/5309d2c3-1f5a-4838-b83f-6f2c12bebaee', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': 'cf2fbf',
-      },
-      body: JSON.stringify({
-        sessionId: 'cf2fbf',
-        runId: 'initial',
-        hypothesisId: 'H4',
-        location: 'Login.tsx:handleGoogleSignIn:click',
-        message: 'Google sign-in initiated',
-        data: {},
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion agent log
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin },
