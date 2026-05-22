@@ -89,7 +89,9 @@ export default function Schedule() {
       return;
     }
     setGenerating(true);
-    const base = new Date();
+    const _sd = new Date();
+    const base = new Date(_sd);
+    base.setDate(_sd.getDate() - (_sd.getDay() + 6) % 7); // snap to Monday
     const weeks = 4;
     const profileInput = {
       archetype: profile.archetype,
@@ -123,7 +125,9 @@ export default function Schedule() {
     setGenerating(true);
     const today = fmtDate(new Date());
     await supabase.from('training_schedule').delete().eq('user_id', user.id).gte('date', today).eq('completed', false);
-    const base = new Date();
+    const _rd = new Date();
+    const base = new Date(_rd);
+    base.setDate(_rd.getDate() - (_rd.getDay() + 6) % 7); // snap to Monday
     const weeks = 4;
     const profileInput = {
       archetype: profile.archetype,
