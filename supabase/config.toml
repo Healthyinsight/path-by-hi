@@ -2,3 +2,6 @@ project_id = "gzjjdfjqwfjkohkjraeh"
 
 [functions.garmin-webhook]
 verify_jwt = false
+
+[functions.format-insights]
+verify_jwt = true
