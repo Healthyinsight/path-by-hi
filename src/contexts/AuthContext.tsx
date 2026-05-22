@@ -26,24 +26,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7940/ingest/5309d2c3-1f5a-4838-b83f-6f2c12bebaee', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': 'cf2fbf',
-      },
-      body: JSON.stringify({
-        sessionId: 'cf2fbf',
-        runId: 'initial',
-        hypothesisId: 'H1',
-        location: 'AuthContext.tsx:useEffect:getSession',
-        message: 'AuthProvider mounted, starting getSession',
-        data: {},
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion agent log
     // Set up auth state listener FIRST (before getSession)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
@@ -56,24 +38,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(initialSession);
       setUser(initialSession?.user ?? null);
       setLoading(false);
-      // #region agent log
-      fetch('http://127.0.0.1:7940/ingest/5309d2c3-1f5a-4838-b83f-6f2c12bebaee', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': 'cf2fbf',
-        },
-        body: JSON.stringify({
-          sessionId: 'cf2fbf',
-          runId: 'initial',
-          hypothesisId: 'H1',
-          location: 'AuthContext.tsx:useEffect:getSession:then',
-          message: 'getSession resolved',
-          data: { hasSession: !!initialSession },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion agent log
     });
 
     return () => subscription.unsubscribe();
