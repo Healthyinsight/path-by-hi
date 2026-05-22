@@ -109,6 +109,12 @@ export default function TodayView() {
   const { insights, loading: loadingInsights } = useInsights(profile);
   const [formattedInsights, setFormattedInsights] = useState<typeof insights | null>(null);
   const mockRecovery = useMemo(() => getTodayRecovery(), []);
+  const [moodDialogOpen, setMoodDialogOpen] = useState(false);
+  const [moodSliderValue, setMoodSliderValue] = useState([3]);
+  const [savedMoodToday, setSavedMoodToday] = useState<number | null>(null);
+  const [showRecoveryMoodCard, setShowRecoveryMoodCard] = useState(false);
+  const [showInlineMoodChoices, setShowInlineMoodChoices] = useState(false);
+  const [todayDailyMetrics, setTodayDailyMetrics] = useState<DailyMetricsRow | null>(null);
   const recovery = useMemo(
     () => calculateRecoveryScore({
       body_battery: todayDailyMetrics?.body_battery ?? null,
@@ -118,12 +124,6 @@ export default function TodayView() {
     }),
     [todayDailyMetrics],
   );
-  const [moodDialogOpen, setMoodDialogOpen] = useState(false);
-  const [moodSliderValue, setMoodSliderValue] = useState([3]);
-  const [savedMoodToday, setSavedMoodToday] = useState<number | null>(null);
-  const [showRecoveryMoodCard, setShowRecoveryMoodCard] = useState(false);
-  const [showInlineMoodChoices, setShowInlineMoodChoices] = useState(false);
-  const [todayDailyMetrics, setTodayDailyMetrics] = useState<DailyMetricsRow | null>(null);
   const [morningCheckInOpen, setMorningCheckInOpen] = useState(false);
   const [sleepHours, setSleepHours] = useState(7.5);
   const [energyLevel, setEnergyLevel] = useState<number | null>(null);

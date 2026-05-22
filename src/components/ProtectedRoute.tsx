@@ -18,7 +18,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
       .from('user_profiles')
       .select('onboarding_completed')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
       .then(({ data, error }: any) => {
         if (error) {
           console.error('Onboarding check failed:', error);
