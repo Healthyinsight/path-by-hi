@@ -61,7 +61,7 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
       >
         {/* Rotating word with emoji */}
         <div
-          className="text-[3rem] sm:text-[4rem]"
+          className="text-[2rem] sm:text-[2.5rem]"
           style={{
             textAlign: 'center',
             minHeight: '1.3em',
@@ -90,7 +90,7 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
 
         {/* Static "by Hi" */}
         <span
-          className="text-[3rem] sm:text-[4rem]"
+          className="text-[2rem] sm:text-[2.5rem]"
           style={{
             fontFamily: "'Merriweather', serif",
             fontWeight: 700,
@@ -105,7 +105,7 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
 
       {/* Powered by badge */}
       <div
-        className="mt-8"
+        className="mt-3"
         style={{
           display: 'inline-flex',
           alignItems: 'center',

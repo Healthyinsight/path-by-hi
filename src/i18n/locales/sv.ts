@@ -337,7 +337,7 @@ export const sv = {
     resendCooldown: 'Skicka igen om {{seconds}} s',
     yourEmail: 'E-postadress',
     sendMagicLink: 'Skicka inloggningslänk',
-    noPasswordHint: 'Inget lösenord behövs — vi skickar en trygg länk till din mejl.',
+    noPasswordHint: 'Inget lösenord — vi skickar en trygg länk.',
     continueGoogle: 'Fortsätt med Google',
     googleSignIn: 'Fortsätt med Google',
     googleFailed: 'Det gick inte att öppna Google just nu. Prova igen om en stund — eller använd mejl-länken nedan.',
