@@ -6,7 +6,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import i18n from '@/i18n/config';
 import { Loader as Loader2, Mail, CircleCheck as CheckCircle, Lock } from 'lucide-react';
 import { toast } from 'sonner';
@@ -224,7 +223,7 @@ export default function Login() {
 
   return (
     <div
-      className="flex min-h-screen flex-col items-center justify-center px-4"
+      className="relative flex min-h-screen flex-col items-center justify-start pt-6 sm:pt-10 px-4"
       style={{
         background: `
           radial-gradient(ellipse at 50% 30%, rgba(80, 149, 172, 0.06) 0%, transparent 70%),
@@ -232,8 +231,56 @@ export default function Login() {
         `,
       }}
     >
-      <div className="w-full flex flex-col items-center space-y-6">
-        <div className="w-full max-w-[480px] flex flex-col items-center">
+      {/* Language toggle — top-right corner */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '16px',
+          right: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontFamily: "'Merriweather Sans', sans-serif",
+          fontSize: '13px',
+          fontWeight: 600,
+          userSelect: 'none',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => void i18n.changeLanguage('sv')}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+            color: i18n.language.startsWith('sv') ? '#5095AC' : '#8E9BA3',
+          }}
+        >SV</button>
+        <span style={{ color: '#8E9BA3' }}>|</span>
+        <button
+          type="button"
+          onClick={() => void i18n.changeLanguage('en')}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+            color: i18n.language.startsWith('en') ? '#5095AC' : '#8E9BA3',
+          }}
+        >EN</button>
+      </div>
+
+      <div className="w-full flex flex-col items-center space-y-3">
+        <div
+          className="w-full max-w-[480px]"
+          style={{
+            background: 'rgba(255,255,255,0.85)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.3)',
+            borderRadius: '16px',
+            boxShadow: '0 4px 24px rgba(26,43,50,0.06)',
+            padding: '20px 32px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
           <AnimatedTitle idle={!email} />
 
           <motion.p
@@ -244,7 +291,7 @@ export default function Login() {
               fontFamily: "'Merriweather Sans', sans-serif",
               fontStyle: 'italic',
               fontSize: '14px',
-              color: '#6B7B84',
+              color: '#4A5B65',
               marginTop: '12px',
               textAlign: 'center',
             }}
@@ -253,23 +300,7 @@ export default function Login() {
           </motion.p>
         </div>
 
-        <div className="w-full max-w-[480px] space-y-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">{t('login.language')}</Label>
-            <p className="text-xs text-muted-foreground">{t('login.languageHint')}</p>
-            <Select
-              value={i18n.language.startsWith('en') ? 'en' : 'sv'}
-              onValueChange={(v) => void i18n.changeLanguage(v)}
-            >
-              <SelectTrigger className="h-10 w-full max-w-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sv">{t('settings.langSv')}</SelectItem>
-                <SelectItem value="en">{t('settings.langEn')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="w-full max-w-[480px]">
           {phase === 'sent' ? (
             <div className="card-glass p-6 md:px-12 md:py-10 space-y-4 text-center">
               <CheckCircle className="mx-auto h-12 w-12 text-primary" />
@@ -344,7 +375,7 @@ export default function Login() {
                   style={{
                     fontFamily: "'Merriweather Sans', sans-serif",
                     fontSize: '13px',
-                    color: '#8E9BA3',
+                    color: '#6B7B84',
                   }}
                 >
                   {t('common.or')}
@@ -393,7 +424,7 @@ export default function Login() {
 
                 <Button
                   type="submit"
-                  className="w-full h-[52px] text-base font-semibold rounded-[10px]"
+                  className="w-full h-[52px] text-base font-semibold rounded-[10px] bg-[#2A7A94] hover:bg-[#236C85] text-white"
                   disabled={magicLoading || phase === 'sending'}
                   style={{
                     fontFamily: "'Merriweather Sans', sans-serif",
@@ -407,19 +438,18 @@ export default function Login() {
                   )}
                   {t('login.sendMagicLink')}
                 </Button>
+                <p
+                  className="mt-2 flex items-center justify-center gap-1.5 text-center"
+                  style={{
+                    fontFamily: "'Merriweather Sans', sans-serif",
+                    fontSize: '13px',
+                    color: '#6B7B84',
+                  }}
+                >
+                  <Lock className="h-3.5 w-3.5 shrink-0" />
+                  {t('login.noPasswordHint')}
+                </p>
               </form>
-
-              <p
-                className="flex items-center justify-center gap-1.5 text-center"
-                style={{
-                  fontFamily: "'Merriweather Sans', sans-serif",
-                  fontSize: '13px',
-                  color: '#8E9BA3',
-                }}
-              >
-                <Lock className="h-3.5 w-3.5 shrink-0" />
-                {t('login.noPasswordHint')}
-              </p>
             </div>
           )}
         </div>
