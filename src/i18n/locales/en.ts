@@ -337,7 +337,7 @@ export const en = {
     resendCooldown: 'Send again in {{seconds}} s',
     yourEmail: 'Email address',
     sendMagicLink: 'Send sign-in link',
-    noPasswordHint: ‘No password — we’ll send a secure link.’,
+    noPasswordHint: "No password — we’ll send a secure link.",
     continueGoogle: 'Continue with Google',
     googleSignIn: 'Continue with Google',
     googleFailed: 'Google sign-in didn’t open just now. Try again in a moment — or use email below.',
