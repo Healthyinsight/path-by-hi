@@ -346,8 +346,8 @@ export const en = {
     switchAccount: 'Use another account',
     errorGeneric: 'That didn’t work right now. Check your email and try again in a little while.',
     errorRateLimit: 'You’ve requested several links in a short time. Wait a bit — your inbox will catch up.',
-    errorInvalidEmail: ‘That email doesn’t look quite complete — worth a quick double-check.’,
-    privacyPolicy: ‘Privacy policy’,
+    errorInvalidEmail: "That email doesn’t look quite complete — worth a quick double-check.",
+    privacyPolicy: "Privacy policy",
   },
   notFound: {
     title: '404',
