@@ -231,40 +231,6 @@ export default function Login() {
         `,
       }}
     >
-      {/* Language toggle — top-right corner */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '16px',
-          right: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          fontFamily: "'Merriweather Sans', sans-serif",
-          fontSize: '13px',
-          fontWeight: 600,
-          userSelect: 'none',
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => void i18n.changeLanguage('sv')}
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-            color: i18n.language.startsWith('sv') ? '#5095AC' : '#8E9BA3',
-          }}
-        >SV</button>
-        <span style={{ color: '#8E9BA3' }}>|</span>
-        <button
-          type="button"
-          onClick={() => void i18n.changeLanguage('en')}
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-            color: i18n.language.startsWith('en') ? '#5095AC' : '#8E9BA3',
-          }}
-        >EN</button>
-      </div>
-
       <div className="w-full flex flex-col items-center space-y-3">
         <div
           className="w-full max-w-[480px]"

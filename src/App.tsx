@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/providers/ThemeProvider";
+import { LanguageFlagButton } from "@/components/LanguageFlagButton";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PublicOnlyRoute } from "@/components/PublicOnlyRoute";
 import TodayView from "./pages/TodayView";
@@ -29,6 +30,7 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <BrowserRouter>
+          <LanguageFlagButton />
           <Routes>
             <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
             <Route path="/onboarding" element={<Onboarding />} />
