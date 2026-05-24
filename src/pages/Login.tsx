@@ -420,6 +420,29 @@ export default function Login() {
           )}
         </div>
       </div>
+
+      <footer
+        style={{
+          marginTop: 'auto',
+          paddingTop: '24px',
+          paddingBottom: '16px',
+          textAlign: 'center',
+        }}
+      >
+        <a
+          href="/privacy"
+          style={{
+            fontFamily: "'Merriweather Sans', sans-serif",
+            fontSize: '12px',
+            color: '#8E9BA3',
+            textDecoration: 'none',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
+        >
+          {t('login.privacyPolicy')}
+        </a>
+      </footer>
     </div>
   );
 }

@@ -347,6 +347,7 @@ export const sv = {
     errorGeneric: 'Det gick inte just nu. Kontrollera mejladressen och försök igen om en liten stund.',
     errorRateLimit: 'Du har bett om några länkar på kort tid. Vänta en stund — din inkorg hinner ikapp.',
     errorInvalidEmail: 'Mejladressen ser inte helt komplett ut — dubbelkolla gärna.',
+    privacyPolicy: 'Integritetspolicy',
   },
   notFound: {
     title: '404',
