@@ -178,7 +178,7 @@ export default function Login() {
         justifyContent: 'center',
         gap: '12px',
         backgroundColor: '#FFFFFF',
-        border: '1px solid #E0E0E0',
+        border: '1px solid rgba(80,149,172,0.2)',
         fontFamily: "'Merriweather Sans', sans-serif",
         fontSize: '15px',
         fontWeight: 600,
@@ -235,12 +235,13 @@ export default function Login() {
         <div
           className="w-full max-w-[480px]"
           style={{
-            background: 'rgba(255,255,255,0.85)',
+            background: 'rgba(250,253,254,0.92)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255,255,255,0.3)',
+            border: '1px solid rgba(80,149,172,0.2)',
+            borderTop: '2.5px solid #5095AC',
             borderRadius: '16px',
-            boxShadow: '0 4px 24px rgba(26,43,50,0.06)',
+            boxShadow: '0 4px 24px rgba(80,149,172,0.1)',
             padding: '20px 32px',
             display: 'flex',
             flexDirection: 'column',
@@ -268,7 +269,7 @@ export default function Login() {
 
         <div className="w-full max-w-[480px]">
           {phase === 'sent' ? (
-            <div className="card-glass p-6 md:px-12 md:py-10 space-y-4 text-center">
+            <div className="card-glass p-6 md:px-12 md:py-10 space-y-4 text-center" style={{ background: 'rgba(250,253,254,0.92)', border: '1px solid rgba(80,149,172,0.2)', borderTop: '2.5px solid #5095AC', boxShadow: '0 4px 24px rgba(80,149,172,0.1)' }}>
               <CheckCircle className="mx-auto h-12 w-12 text-primary" />
               <div>
                 <p className="text-lg font-semibold" style={{ color: '#1A2B32' }}>
@@ -332,7 +333,7 @@ export default function Login() {
               </div>
             </div>
           ) : (
-            <div className="card-glass p-6 md:px-12 md:py-10 space-y-5">
+            <div className="card-glass p-6 md:px-12 md:py-10 space-y-5" style={{ background: 'rgba(250,253,254,0.92)', border: '1px solid rgba(80,149,172,0.2)', borderTop: '2.5px solid #5095AC', boxShadow: '0 4px 24px rgba(80,149,172,0.1)' }}>
               {googleButton}
 
               <div className="flex items-center gap-4">

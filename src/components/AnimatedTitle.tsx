@@ -90,17 +90,19 @@ export function AnimatedTitle({ idle = true }: AnimatedTitleProps) {
 
         {/* Static "by Hi" */}
         <span
-          className="text-[2rem] sm:text-[2.5rem]"
+          className="text-[1rem] sm:text-[1.15rem]"
           style={{
             fontFamily: "'Merriweather', serif",
-            fontWeight: 700,
+            fontWeight: 400,
             textAlign: 'center',
             whiteSpace: 'nowrap',
-            color: '#1A2B32',
+            color: '#8E9BA3',
+            letterSpacing: '0.08em',
+            opacity: 0.75,
           }}
         >
           by HI
-</span>
+        </span>
       </div>
 
       {/* Powered by badge */}
