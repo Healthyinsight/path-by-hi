@@ -145,6 +145,15 @@ export default function TodayView() {
     return new Date(dateStr) >= sevenDaysAgo;
   }, [loadingGarminBattery, latestMetrics]);
 
+  const hasDailyMetricsData = useMemo(() => {
+    if (!todayDailyMetrics) return false;
+    return (
+      todayDailyMetrics.body_battery != null ||
+      todayDailyMetrics.hrv_rmssd != null ||
+      todayDailyMetrics.sleep_hours != null
+    );
+  }, [todayDailyMetrics]);
+
   // Race countdown derived from profile.goal_date (not hardcoded)
   const goalDateStr = profile?.goal_date ?? null;
   const raceDate = useMemo(
@@ -852,8 +861,8 @@ export default function TodayView() {
           )}
         </motion.section>
 
-        {/* 2. Recovery Ring — only render when live Garmin data exists. No empty rings/skeletons. */}
-        {hasGarminRecoveryData && (
+        {/* 2. Recovery Ring — render when live Garmin or Sahha/daily_metrics data exists. */}
+        {(hasGarminRecoveryData || hasDailyMetricsData) && (
           <motion.section variants={cardVariant(1)} initial="hidden" animate="visible" className="mb-4">
             <RecoveryRing variant="live" data={recovery} />
           </motion.section>
@@ -1104,8 +1113,8 @@ export default function TodayView() {
           )}
         </motion.section>
 
-        {/* Garmin integration CTA — subtle, shown only when no recovery data */}
-        {!loadingGarminBattery && !hasGarminRecoveryData && (
+        {/* Integration CTA — subtle, shown only when no recovery data */}
+        {!loadingGarminBattery && !hasGarminRecoveryData && !hasDailyMetricsData && (
           <motion.section variants={cardVariant(7)} initial="hidden" animate="visible" className="mb-4">
             <div className="flex items-center justify-between gap-3 rounded-xl border border-[#E8EDEF] bg-white/60 px-4 py-3">
               <p
@@ -1116,7 +1125,7 @@ export default function TodayView() {
                   lineHeight: 1.5,
                 }}
               >
-                Koppla träningsdata för djupare återhämtningsanalys
+                Koppla Sahha (iOS/Android) eller Garmin för återhämtningsanalys
               </p>
               <a
                 href="/settings#integrations"
@@ -1163,7 +1172,7 @@ export default function TodayView() {
               onClick={() => navigate('/schedule')}
               style={{ borderRadius: '10px', fontFamily: "'Merriweather Sans', sans-serif", fontSize: '13px', fontWeight: 600 }}
             >
-              <Calendar className="mr-1.5 h-4 w-4" /> {t('today.seeWeek')}
+              <Calendar className="mr-2 h-4 w-4" /> {t('today.seeWeek')}
             </Button>
           </div>
         </motion.section>

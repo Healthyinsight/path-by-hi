@@ -11,11 +11,12 @@ import { getUser, type User } from '@/services/usersService';
 import { upsertProfile } from '@/services/profileService';
 import { getCurrentUserId, toFiniteNumber } from '@/services/utils';
 import { getStravaAuthUrl, disconnectStrava } from '@/services/stravaService';
+import { connectSahha, disconnectSahha } from '@/services/sahhaService';
 import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LogOut, Watch, Check, Loader2, Mail, Target, RefreshCw, Languages, Palette } from 'lucide-react';
+import { LogOut, Watch, Check, Loader2, Mail, Target, RefreshCw, Languages, Palette, Activity } from 'lucide-react';
 import { useTheme } from '@/providers/ThemeProvider';
 import { toast } from 'sonner';
 import i18n from '@/i18n/config';
@@ -38,6 +39,8 @@ export default function SettingsPage() {
 
   const [trainingUser, setTrainingUser] = useState<Partial<User>>({});
   const [stravaDisconnecting, setStravaDisconnecting] = useState(false);
+  const [sahhaConnecting, setSahhaConnecting] = useState(false);
+  const [sahhaDisconnecting, setSahhaDisconnecting] = useState(false);
   const [goal, setGoal] = useState<{ goal_name: string; goal_date: string; goal_emoji: string }>({
     goal_name: '',
     goal_date: '',
@@ -434,6 +437,85 @@ export default function SettingsPage() {
             >
               {t('settings.connectStrava')}
             </Button>
+          )}
+        </div>
+
+        <div className="card-athletic space-y-3">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-muted-foreground" />
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Sahha Health</p>
+          </div>
+          {trainingUser.sahha_user_id ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-rest" />
+                <span className="text-sm text-rest">Ansluten</span>
+                <span className="text-xs text-muted-foreground">({trainingUser.sahha_user_id})</span>
+              </div>
+              <Button
+                variant="outline"
+                className="touch-target w-full"
+                disabled={sahhaDisconnecting}
+                onClick={async () => {
+                  if (!user?.id) return;
+                  setSahhaDisconnecting(true);
+                  try {
+                    const { error } = await disconnectSahha(user.id);
+                    if (error) throw new Error(error);
+                    setTrainingUser((u) => ({
+                      ...u,
+                      sahha_user_id: null,
+                      sahha_profile_token: null,
+                      sahha_connected_at: null,
+                    }));
+                    toast.success('Sahha frånkopplad.');
+                  } catch {
+                    toast.error('Kunde inte koppla från Sahha. Försök igen.');
+                  } finally {
+                    setSahhaDisconnecting(false);
+                  }
+                }}
+              >
+                {sahhaDisconnecting ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Kopplar från...</>
+                ) : (
+                  'Koppla från Sahha'
+                )}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                className="touch-target w-full"
+                disabled={sahhaConnecting}
+                onClick={async () => {
+                  setSahhaConnecting(true);
+                  try {
+                    const { error } = await connectSahha();
+                    if (error) throw new Error(error);
+                    if (user?.id) {
+                      const { data } = await getUser(user.id);
+                      if (data) setTrainingUser(data);
+                    }
+                    toast.success('Sahha ansluten! Hälsodata synkas automatiskt.');
+                  } catch {
+                    toast.error('Kunde inte ansluta Sahha. Kontrollera inställningarna.');
+                  } finally {
+                    setSahhaConnecting(false);
+                  }
+                }}
+              >
+                {sahhaConnecting ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Ansluter...</>
+                ) : (
+                  'Anslut Sahha'
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Sahha samlar hälsodata från HealthKit (iOS) och Health Connect (Android).
+              </p>
+            </div>
           )}
         </div>
 
