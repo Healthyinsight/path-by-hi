@@ -559,6 +559,9 @@ export type Database = {
           id: string
           name: string | null
           run_threshold_pace: string | null
+          sahha_connected_at: string | null
+          sahha_profile_token: string | null
+          sahha_user_id: string | null
           strava_access_token: string | null
           strava_athlete_id: string | null
           strava_refresh_token: string | null
@@ -579,6 +582,9 @@ export type Database = {
           id: string
           name?: string | null
           run_threshold_pace?: string | null
+          sahha_connected_at?: string | null
+          sahha_profile_token?: string | null
+          sahha_user_id?: string | null
           strava_access_token?: string | null
           strava_athlete_id?: string | null
           strava_refresh_token?: string | null
@@ -599,6 +605,9 @@ export type Database = {
           id?: string
           name?: string | null
           run_threshold_pace?: string | null
+          sahha_connected_at?: string | null
+          sahha_profile_token?: string | null
+          sahha_user_id?: string | null
           strava_access_token?: string | null
           strava_athlete_id?: string | null
           strava_refresh_token?: string | null
